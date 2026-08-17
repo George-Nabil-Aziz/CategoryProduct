@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CategoryProduct.API/CategoryProduct.API.csproj" />
+  <Project Path="CategoryProduct.MVC/CategoryProduct.MVC.csproj" Id="d59e0643-63e4-4c65-9fe8-8dde79f04110" />
+</Solution>
