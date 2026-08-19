@@ -1,4 +1,5 @@
 ﻿using CategoryProduct.API.Data;
+using CategoryProduct.API.Dtos;
 using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,10 +19,13 @@ namespace CategoryProduct.API.Controllers
         [HttpGet]
         public IActionResult Get(int page = 1, int pageSize = 5)
         {
-            return Ok(_context.Products
+            var products = _context.Products
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList());
+                .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
+                .ToList();
+
+            return Ok(products);
         }
 
         [HttpGet("{id}")]
@@ -32,34 +36,42 @@ namespace CategoryProduct.API.Controllers
             if (product == null)
                 return NotFound();
 
-            return Ok(product);
+            return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
         }
 
         [HttpPost]
-        public IActionResult Post(Product product)
+        public IActionResult Post(ProductRequestDto request)
         {
+            var product = new Product
+            {
+                Name = request.Name,
+                Price = request.Price,
+                Quantity = request.Quantity,
+                CategoryId = request.CategoryId
+            };
+
             _context.Products.Add(product);
             _context.SaveChanges();
 
-            return Ok(product);
+            return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(int id, Product product)
+        public IActionResult Put(int id, ProductRequestDto request)
         {
             var oldProduct = _context.Products.Find(id);
 
             if (oldProduct == null)
                 return NotFound();
 
-            oldProduct.Name = product.Name;
-            oldProduct.Price = product.Price;
-            oldProduct.Quantity = product.Quantity;
-            oldProduct.CategoryId = product.CategoryId;
+            oldProduct.Name = request.Name;
+            oldProduct.Price = request.Price;
+            oldProduct.Quantity = request.Quantity;
+            oldProduct.CategoryId = request.CategoryId;
 
             _context.SaveChanges();
 
-            return Ok(oldProduct);
+            return Ok(new ProductResponseDto(oldProduct.Id, oldProduct.Name, oldProduct.Price, oldProduct.Quantity, oldProduct.CategoryId));
         }
 
         [HttpDelete("{id}")]

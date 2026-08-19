@@ -1,4 +1,5 @@
 ﻿using CategoryProduct.API.Data;
+using CategoryProduct.API.Dtos;
 using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +22,7 @@ namespace CategoryProduct.API.Controllers
             var categories = _context.Categories
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(c => new CategoryResponseDto(c.Id, c.Name))
                 .ToList();
 
             return Ok(categories);
@@ -34,31 +36,33 @@ namespace CategoryProduct.API.Controllers
             if (category == null)
                 return NotFound();
 
-            return Ok(category);
+            return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
         [HttpPost]
-        public IActionResult Post(Category category)
+        public IActionResult Post(CategoryRequestDto request)
         {
+            var category = new Category { Name = request.Name };
+
             _context.Categories.Add(category);
             _context.SaveChanges();
 
-            return Ok(category);
+            return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(int id, Category category)
+        public IActionResult Put(int id, CategoryRequestDto request)
         {
             var oldCategory = _context.Categories.Find(id);
 
             if (oldCategory == null)
                 return NotFound();
 
-            oldCategory.Name = category.Name;
+            oldCategory.Name = request.Name;
 
             _context.SaveChanges();
 
-            return Ok(oldCategory);
+            return Ok(new CategoryResponseDto(oldCategory.Id, oldCategory.Name));
         }
 
         [HttpDelete("{id}")]
@@ -80,6 +84,7 @@ namespace CategoryProduct.API.Controllers
         {
             var products = _context.Products
                 .Where(p => p.CategoryId == catId)
+                .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
                 .ToList();
 
             return Ok(products);
