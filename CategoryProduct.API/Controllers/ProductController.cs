@@ -1,6 +1,7 @@
 ﻿using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
 using CategoryProduct.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategoryProduct.API.Controllers
@@ -39,6 +40,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
         }
 
+        [Authorize]
         [HttpPost]
         public IActionResult Post(ProductRequestDto request)
         {
@@ -56,6 +58,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public IActionResult Put(int id, ProductRequestDto request)
         {
@@ -74,6 +77,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new ProductResponseDto(oldProduct.Id, oldProduct.Name, oldProduct.Price, oldProduct.Quantity, oldProduct.CategoryId));
         }
 
+        [Authorize]
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {

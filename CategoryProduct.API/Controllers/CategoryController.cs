@@ -1,6 +1,7 @@
 ﻿using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
 using CategoryProduct.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategoryProduct.API.Controllers
@@ -39,6 +40,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
+        [Authorize]
         [HttpPost]
         public IActionResult Post(CategoryRequestDto request)
         {
@@ -50,6 +52,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public IActionResult Put(int id, CategoryRequestDto request)
         {
@@ -65,6 +68,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(oldCategory.Id, oldCategory.Name));
         }
 
+        [Authorize]
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
