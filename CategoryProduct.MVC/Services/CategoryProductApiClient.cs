@@ -95,7 +95,8 @@ namespace CategoryProduct.MVC.Services
 
             if (response.IsSuccessStatusCode) return new ApiResult { Success = true };
             if (response.StatusCode == HttpStatusCode.NotFound) return new ApiResult { NotFound = true };
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            if (response.StatusCode == HttpStatusCode.Forbidden) return new ApiResult { Forbidden = true };
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
                 return new ApiResult { Unauthorized = true };
 
             if (response.StatusCode == HttpStatusCode.BadRequest)
@@ -114,7 +115,7 @@ namespace CategoryProduct.MVC.Services
             return new ApiResult();
         }
 
-        public record LoginResult(string Token, DateTime ExpiresAtUtc);
+        public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role);
 
         private record ValidationProblem(Dictionary<string, string[]>? Errors);
     }

@@ -34,14 +34,14 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create()
         {
             await LoadCategoriesAsync(null);
             return View();
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name,Price,Quantity,CategoryId")] Product product)
@@ -58,7 +58,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -68,7 +68,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int? id, [Bind("Id,Name,Price,Quantity,CategoryId")] Product product)
@@ -86,7 +86,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -96,7 +96,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int? id)
@@ -129,6 +129,8 @@ namespace CategoryProduct.MVC.Controllers
         {
             if (result.Unauthorized)
                 ModelState.AddModelError(string.Empty, "You must be signed in to make changes.");
+            if (result.Forbidden)
+                ModelState.AddModelError(string.Empty, "You don't have permission to make changes.");
             foreach (var (field, messages) in result.Errors)
                 foreach (var m in messages)
                     ModelState.AddModelError(field, m);

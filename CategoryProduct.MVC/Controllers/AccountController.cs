@@ -38,6 +38,7 @@ namespace CategoryProduct.MVC.Controllers
                 new[]
                 {
                     new Claim(ClaimTypes.Name, model.UserName),
+                    new Claim(ClaimTypes.Role, login.Role),
                     new Claim("access_token", login.Token)
                 },
                 CookieAuthenticationDefaults.AuthenticationScheme);
@@ -54,6 +55,9 @@ namespace CategoryProduct.MVC.Controllers
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
             return RedirectToAction("Index", "Categories");
         }
+
+        [HttpGet]
+        public IActionResult AccessDenied() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]

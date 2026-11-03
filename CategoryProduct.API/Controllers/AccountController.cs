@@ -44,7 +44,8 @@ namespace CategoryProduct.API.Controllers
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName)
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             var key = new SymmetricSecurityKey(
@@ -60,7 +61,7 @@ namespace CategoryProduct.API.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            return Ok(new LoginResponseDto(tokenString, expiresAtUtc));
+            return Ok(new LoginResponseDto(tokenString, expiresAtUtc, user.Role));
         }
     }
 }

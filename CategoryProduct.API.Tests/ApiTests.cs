@@ -14,10 +14,10 @@ namespace CategoryProduct.API.Tests
             _client = factory.CreateClient();
         }
 
-        private async Task<string> LoginAsync()
+        private async Task<string> LoginAsync(string userName = ApiFactory.UserName)
         {
             var response = await _client.PostAsJsonAsync("api/account/login",
-                new { userName = ApiFactory.UserName, password = ApiFactory.Password });
+                new { userName, password = ApiFactory.Password });
             response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             return json.GetProperty("token").GetString()!;
@@ -43,6 +43,19 @@ namespace CategoryProduct.API.Tests
         {
             var response = await _client.PostAsJsonAsync("api/category", new { name = "New" });
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PostCategory_NonAdminToken_Returns403()
+        {
+            var token = await LoginAsync(ApiFactory.PlainUserName);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/category")
+            {
+                Content = JsonContent.Create(new { name = "New" })
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var response = await _client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
         [Fact]

@@ -12,6 +12,7 @@ namespace CategoryProduct.MVC.Models
         public bool Success { get; init; }
         public bool NotFound { get; init; }
         public bool Unauthorized { get; init; }
+        public bool Forbidden { get; init; }
         /// <summary>400 validation errors: field name -> messages.</summary>
         public Dictionary<string, string[]> Errors { get; init; } = new();
     }

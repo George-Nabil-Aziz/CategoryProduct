@@ -18,6 +18,12 @@ namespace CategoryProduct.API.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.UserName)
                 .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.Role)
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasDefaultValue("User");
         }
     }
 }

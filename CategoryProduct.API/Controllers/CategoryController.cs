@@ -47,7 +47,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Post(CategoryRequestDto request)
         {
@@ -59,7 +59,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(int id, CategoryRequestDto request)
         {
@@ -75,7 +75,7 @@ namespace CategoryProduct.API.Controllers
             return Ok(new CategoryResponseDto(oldCategory.Id, oldCategory.Name));
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

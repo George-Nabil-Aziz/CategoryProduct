@@ -11,6 +11,7 @@ namespace CategoryProduct.API.Tests
     public class ApiFactory : WebApplicationFactory<Program>
     {
         public const string UserName = "tester";
+        public const string PlainUserName = "plainuser";
         public const string Password = "P@ssw0rd!";
         public const int SeedCategoryCount = 3;
 
@@ -39,9 +40,12 @@ namespace CategoryProduct.API.Tests
                 using var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = new User { UserName = UserName, PasswordHash = "" };
+                var user = new User { UserName = UserName, PasswordHash = "", Role = "Admin" };
                 user.PasswordHash = new PasswordHasher<User>().HashPassword(user, Password);
                 db.Users.Add(user);
+                var plain = new User { UserName = PlainUserName, PasswordHash = "", Role = "User" };
+                plain.PasswordHash = new PasswordHasher<User>().HashPassword(plain, Password);
+                db.Users.Add(plain);
                 for (var i = 1; i <= SeedCategoryCount; i++)
                     db.Categories.Add(new Category { Name = $"Category {i}" });
                 db.SaveChanges();

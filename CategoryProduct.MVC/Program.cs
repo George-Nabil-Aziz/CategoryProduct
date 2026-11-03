@@ -10,7 +10,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     {
         o.LoginPath = "/Account/Login";
         o.LogoutPath = "/Account/Logout";
-        o.AccessDeniedPath = "/Account/Login";
+        o.AccessDeniedPath = "/Account/AccessDenied";
         o.Cookie.HttpOnly = true;
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.Cookie.SameSite = SameSiteMode.Lax;
