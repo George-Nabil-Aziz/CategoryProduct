@@ -1,11 +1,9 @@
-using CategoryProduct.MVC.Data;
-using Microsoft.EntityFrameworkCore;
+using CategoryProduct.MVC.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpClient<CategoryProductApiClient>(c =>
+    c.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]!));
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

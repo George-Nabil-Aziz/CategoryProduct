@@ -1,177 +1,93 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using CategoryProduct.MVC.Models;
-using CategoryProduct.MVC.Data;
+using CategoryProduct.MVC.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CategoryProduct.MVC.Controllers
 {
     public class CategoriesController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly CategoryProductApiClient _api;
 
-        public CategoriesController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public CategoriesController(CategoryProductApiClient api) => _api = api;
 
-        // GET: CATEGORYS
         public async Task<IActionResult> Index(int page = 1)
         {
-            int pageSize = 5;
-
-            var categoriesQuery = _context.Categories
-                .Include(c => c.Products)
-                .AsQueryable();
-
-
-            int totalCategories = await categoriesQuery.CountAsync();
-
-
-            var categories = await categoriesQuery
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-
-            ViewBag.CurrentPage = page;
-
-            ViewBag.TotalPages = (int)Math.Ceiling(
-                totalCategories / (double)pageSize
-            );
-
-
-            return View(categories);
+            var result = await _api.GetCategoriesAsync(Math.Max(page, 1));
+            ViewBag.CurrentPage = result.Page;
+            ViewBag.TotalPages = result.TotalPages;
+            return View(result.Items);
         }
 
-        // GET: CATEGORYS/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var category = await _context.Categories
-                .Include(c => c.Products)
-                .FirstOrDefaultAsync(m => m.Id == id);
-
-            if (category == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
+            var category = await _api.GetCategoryAsync(id.Value);
+            if (category == null) return NotFound();
+            category.Products = await _api.GetCategoryProductsAsync(id.Value);
             return View(category);
         }
 
-        // GET: CATEGORYS/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
 
-        // POST: CATEGORYS/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,Products")] Category category)
+        public async Task<IActionResult> Create([Bind("Id,Name")] Category category)
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(category);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
+            if (!ModelState.IsValid) return View(category);
+            var result = await _api.CreateCategoryAsync(category);
+            if (result.Success) return RedirectToAction(nameof(Index));
+            if (result.NotFound) return NotFound();
+            AddErrors(result);
             return View(category);
         }
 
-        // GET: CATEGORYS/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-            {
-                return NotFound();
-            }
-            return View(category);
+            if (id == null) return NotFound();
+            var category = await _api.GetCategoryAsync(id.Value);
+            return category == null ? NotFound() : View(category);
         }
 
-        // POST: CATEGORYS/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int? id, [Bind("Id,Name,Products")] Category category)
+        public async Task<IActionResult> Edit(int? id, [Bind("Id,Name")] Category category)
         {
-            if (id != category.Id)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(category);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!CategoryExists(category.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
+            if (id != category.Id) return NotFound();
+            if (!ModelState.IsValid) return View(category);
+            var result = await _api.UpdateCategoryAsync(category.Id, category);
+            if (result.Success) return RedirectToAction(nameof(Index));
+            if (result.NotFound) return NotFound();
+            AddErrors(result);
             return View(category);
         }
 
-        // GET: CATEGORYS/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var category = await _context.Categories
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (category == null)
-            {
-                return NotFound();
-            }
-
-            return View(category);
+            if (id == null) return NotFound();
+            var category = await _api.GetCategoryAsync(id.Value);
+            return category == null ? NotFound() : View(category);
         }
 
-        // POST: CATEGORYS/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int? id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category != null)
-            {
-                _context.Categories.Remove(category);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            if (id == null) return NotFound();
+            var result = await _api.DeleteCategoryAsync(id.Value);
+            if (result.Success) return RedirectToAction(nameof(Index));
+            if (result.NotFound) return NotFound();
+            AddErrors(result);
+            var category = await _api.GetCategoryAsync(id.Value);
+            return category == null ? NotFound() : View("Delete", category);
         }
 
-        private bool CategoryExists(int? id)
+        private void AddErrors(ApiResult result)
         {
-            return _context.Categories.Any(e => e.Id == id);
+            if (result.Unauthorized)
+                ModelState.AddModelError(string.Empty, "You must be signed in to make changes.");
+            foreach (var (field, messages) in result.Errors)
+                foreach (var m in messages)
+                    ModelState.AddModelError(field, m);
         }
     }
 }
