@@ -15,12 +15,15 @@ namespace CategoryProduct.API.Tests
         public const string Password = "P@ssw0rd!";
         public const int SeedCategoryCount = 3;
 
+        protected virtual int LoginPermitLimit => 1000;
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Jwt:Key", "test-key-test-key-test-key-test-key-1234567890");
             builder.UseSetting("Jwt:Issuer", "CategoryProduct.API");
             builder.UseSetting("Jwt:Audience", "CategoryProduct.Client");
             builder.UseSetting("ConnectionStrings:DefaultConnection", "unused");
+            builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
 
             builder.ConfigureServices(services =>
             {

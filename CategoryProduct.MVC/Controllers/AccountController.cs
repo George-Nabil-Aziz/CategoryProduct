@@ -28,6 +28,11 @@ namespace CategoryProduct.MVC.Controllers
             if (!ModelState.IsValid) return View(model);
 
             var login = await _api.LoginAsync(model.UserName, model.Password);
+            if (ReferenceEquals(login, CategoryProductApiClient.LoginResult.TooManyRequests))
+            {
+                ModelState.AddModelError(string.Empty, "Too many login attempts. Try again in a minute.");
+                return View(model);
+            }
             if (login == null)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");

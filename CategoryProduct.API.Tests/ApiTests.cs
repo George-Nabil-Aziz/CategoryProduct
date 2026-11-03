@@ -105,3 +105,27 @@ namespace CategoryProduct.API.Tests
         }
     }
 }
+
+namespace CategoryProduct.API.Tests
+{
+    public class RateLimitTests : IClassFixture<RateLimitTests.LimitedFactory>
+    {
+        public class LimitedFactory : ApiFactory
+        {
+            protected override int LoginPermitLimit => 2;
+        }
+
+        private readonly HttpClient _client;
+
+        public RateLimitTests(LimitedFactory factory) => _client = factory.CreateClient();
+
+        [Fact]
+        public async Task Login_ExceedingLimit_Returns429()
+        {
+            var body = new { userName = ApiFactory.UserName, password = "wrong" };
+            for (var i = 0; i < 2; i++)
+                Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PostAsJsonAsync("api/account/login", body)).StatusCode);
+            Assert.Equal(HttpStatusCode.TooManyRequests, (await _client.PostAsJsonAsync("api/account/login", body)).StatusCode);
+        }
+    }
+}

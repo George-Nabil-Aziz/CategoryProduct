@@ -5,6 +5,7 @@ using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -24,6 +25,7 @@ namespace CategoryProduct.API.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)
         {
             var user = await _context.Users

@@ -30,6 +30,7 @@ namespace CategoryProduct.MVC.Services
         {
             using var response = await _http.PostAsJsonAsync("api/account/login", new { userName, password });
             if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) return LoginResult.TooManyRequests;
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<LoginResult>();
         }
@@ -123,7 +124,10 @@ namespace CategoryProduct.MVC.Services
             return new ApiResult();
         }
 
-        public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role);
+        public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role)
+        {
+            public static readonly LoginResult TooManyRequests = new("", default, "");
+        }
 
         private record ValidationProblem(Dictionary<string, string[]>? Errors);
         private record ConflictProblem(string? Title, string? Detail);
