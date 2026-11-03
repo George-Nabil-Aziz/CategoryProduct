@@ -9,6 +9,24 @@
 <p>
 	@if (User.IsInRole("Admin")) { <a asp-action="Create">Create New</a> }
 </p>
+<form method="get" class="row g-2 mb-3">
+	<div class="col-auto"><input name="search" value="@ViewBag.Search" class="form-control" placeholder="Search name" /></div>
+	<div class="col-auto">
+		<select name="categoryId" class="form-select" asp-items="@((SelectList)ViewBag.Categories)"><option value="">All categories</option></select>
+	</div>
+	<div class="col-auto"><input name="minPrice" value="@ViewBag.MinPrice" type="number" step="0.01" class="form-control" placeholder="Min price" /></div>
+	<div class="col-auto"><input name="maxPrice" value="@ViewBag.MaxPrice" type="number" step="0.01" class="form-control" placeholder="Max price" /></div>
+	<div class="col-auto">
+		<select name="sortBy" class="form-select">
+			<option value="id" selected="@(ViewBag.SortBy == "id")">Sort: Id</option>
+			<option value="name" selected="@(ViewBag.SortBy == "name")">Sort: Name</option>
+			<option value="price" selected="@(ViewBag.SortBy == "price")">Sort: Price</option>
+		</select>
+	</div>
+	<div class="col-auto form-check pt-2"><input type="checkbox" name="desc" value="true" class="form-check-input" id="desc" checked="@(ViewBag.Desc == true)" /><label class="form-check-label" for="desc">Desc</label></div>
+	<div class="col-auto"><button class="btn btn-primary">Filter</button> <a asp-action="Index" class="btn btn-link">Reset</a></div>
+</form>
+
 <table class="table">
 	<thead>
 		<tr>
@@ -61,7 +79,7 @@
 		{
 			<li class="page-item">
 				<a class="page-link"
-				   href="?page=@(ViewBag.CurrentPage - 1)">
+				   asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-search="@ViewBag.Search" asp-route-categoryId="@ViewBag.CategoryId" asp-route-minPrice="@ViewBag.MinPrice" asp-route-maxPrice="@ViewBag.MaxPrice" asp-route-sortBy="@ViewBag.SortBy" asp-route-desc="@ViewBag.Desc">
 					Previous
 				</a>
 			</li>
@@ -74,7 +92,7 @@
 				@(i == ViewBag.CurrentPage ? "active" : "")">
 
 				<a class="page-link"
-				   href="?page=@i">
+				   asp-action="Index" asp-route-page="@i" asp-route-search="@ViewBag.Search" asp-route-categoryId="@ViewBag.CategoryId" asp-route-minPrice="@ViewBag.MinPrice" asp-route-maxPrice="@ViewBag.MaxPrice" asp-route-sortBy="@ViewBag.SortBy" asp-route-desc="@ViewBag.Desc">
 					@i
 				</a>
 
@@ -86,7 +104,7 @@
 		{
 			<li class="page-item">
 				<a class="page-link"
-				   href="?page=@(ViewBag.CurrentPage + 1)">
+				   asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-search="@ViewBag.Search" asp-route-categoryId="@ViewBag.CategoryId" asp-route-minPrice="@ViewBag.MinPrice" asp-route-maxPrice="@ViewBag.MaxPrice" asp-route-sortBy="@ViewBag.SortBy" asp-route-desc="@ViewBag.Desc">
 					Next
 				</a>
 			</li>

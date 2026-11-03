@@ -14,10 +14,15 @@ namespace CategoryProduct.MVC.Controllers
 
         public ProductsController(CategoryProductApiClient api) => _api = api;
 
-        public async Task<IActionResult> Index(int page = 1)
+        public async Task<IActionResult> Index(int page = 1, string? search = null, int? categoryId = null,
+            decimal? minPrice = null, decimal? maxPrice = null, string? sortBy = null, bool desc = false)
         {
-            var result = await _api.GetProductsAsync(Math.Max(page, 1));
-            var names = (await _api.GetAllCategoriesAsync()).ToDictionary(c => c.Id, c => c.Name);
+            var result = await _api.GetProductsAsync(Math.Max(page, 1), 5, search, categoryId, minPrice, maxPrice, sortBy, desc);
+            var categories = await _api.GetAllCategoriesAsync();
+            var names = categories.ToDictionary(c => c.Id, c => c.Name);
+            ViewBag.Categories = new SelectList(categories, "Id", "Name", categoryId);
+            ViewBag.Search = search; ViewBag.CategoryId = categoryId; ViewBag.MinPrice = minPrice;
+            ViewBag.MaxPrice = maxPrice; ViewBag.SortBy = sortBy; ViewBag.Desc = desc;
             foreach (var p in result.Items)
                 p.CategoryName = names.GetValueOrDefault(p.CategoryId);
             ViewBag.CurrentPage = result.Page;

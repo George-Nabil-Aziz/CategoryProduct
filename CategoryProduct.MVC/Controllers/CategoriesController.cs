@@ -13,9 +13,10 @@ namespace CategoryProduct.MVC.Controllers
 
         public CategoriesController(CategoryProductApiClient api) => _api = api;
 
-        public async Task<IActionResult> Index(int page = 1)
+        public async Task<IActionResult> Index(int page = 1, string? search = null)
         {
-            var result = await _api.GetCategoriesAsync(Math.Max(page, 1));
+            var result = await _api.GetCategoriesAsync(Math.Max(page, 1), search: search);
+            ViewBag.Search = search;
             ViewBag.CurrentPage = result.Page;
             ViewBag.TotalPages = result.TotalPages;
             return View(result.Items);

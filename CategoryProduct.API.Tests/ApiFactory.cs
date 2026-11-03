@@ -52,6 +52,11 @@ namespace CategoryProduct.API.Tests
                 for (var i = 1; i <= SeedCategoryCount; i++)
                     db.Categories.Add(new Category { Name = $"Category {i}" });
                 db.SaveChanges();
+                db.Products.AddRange(
+                    new Product { Name = "Widget A", Price = 30, Quantity = 1, CategoryId = 1 },
+                    new Product { Name = "Widget B", Price = 10, Quantity = 1, CategoryId = 1 },
+                    new Product { Name = "Gadget", Price = 20, Quantity = 1, CategoryId = 2 });
+                db.SaveChanges();
             });
         }
     }

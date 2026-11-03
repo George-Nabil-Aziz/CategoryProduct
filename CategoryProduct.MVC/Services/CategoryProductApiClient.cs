@@ -36,8 +36,8 @@ namespace CategoryProduct.MVC.Services
         }
 
         // ---------- Categories ----------
-        public async Task<PagedResult<Category>> GetCategoriesAsync(int page, int pageSize = 5) =>
-            (await _http.GetFromJsonAsync<PagedResult<Category>>($"api/category?page={page}&pageSize={pageSize}"))!;
+        public async Task<PagedResult<Category>> GetCategoriesAsync(int page, int pageSize = 5, string? search = null) =>
+            (await _http.GetFromJsonAsync<PagedResult<Category>>($"api/category?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}"))!;
 
         public async Task<List<Category>> GetAllCategoriesAsync()
         {
@@ -64,8 +64,12 @@ namespace CategoryProduct.MVC.Services
         public Task<ApiResult> DeleteCategoryAsync(int id) => SendAsync(HttpMethod.Delete, $"api/category/{id}");
 
         // ---------- Products ----------
-        public async Task<PagedResult<Product>> GetProductsAsync(int page, int pageSize = 5) =>
-            (await _http.GetFromJsonAsync<PagedResult<Product>>($"api/product?page={page}&pageSize={pageSize}"))!;
+        public async Task<PagedResult<Product>> GetProductsAsync(int page, int pageSize = 5, string? search = null,
+            int? categoryId = null, decimal? minPrice = null, decimal? maxPrice = null, string? sortBy = null, bool desc = false) =>
+            (await _http.GetFromJsonAsync<PagedResult<Product>>(
+                $"api/product?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}&categoryId={categoryId}"
+                + $"&minPrice={minPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture)}&maxPrice={maxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+                + $"&sortBy={Uri.EscapeDataString(sortBy ?? "")}&desc={desc.ToString().ToLowerInvariant()}"))!;
 
         public Task<Product?> GetProductAsync(int id) => GetOrNullAsync<Product>($"api/product/{id}");
 

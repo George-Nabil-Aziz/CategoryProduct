@@ -9,6 +9,11 @@
 <p>
 	@if (User.IsInRole("Admin")) { <a asp-action="Create">Create New</a> }
 </p>
+<form method="get" class="row g-2 mb-3">
+	<div class="col-auto"><input name="search" value="@ViewBag.Search" class="form-control" placeholder="Search name" /></div>
+	<div class="col-auto"><button class="btn btn-primary">Search</button> <a asp-action="Index" class="btn btn-link">Reset</a></div>
+</form>
+
 <table class="table">
 	<thead>
 		<tr>
@@ -42,7 +47,7 @@
 		{
 			<li class="page-item">
 				<a class="page-link"
-				   href="?page=@(ViewBag.CurrentPage - 1)">
+				   asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-search="@ViewBag.Search">
 					Previous
 				</a>
 			</li>
@@ -55,7 +60,7 @@
 				@(i == ViewBag.CurrentPage ? "active" : "")">
 
 				<a class="page-link"
-				   href="?page=@i">
+				   asp-action="Index" asp-route-page="@i" asp-route-search="@ViewBag.Search">
 					@i
 				</a>
 
@@ -67,7 +72,7 @@
 		{
 			<li class="page-item">
 				<a class="page-link"
-				   href="?page=@(ViewBag.CurrentPage + 1)">
+				   asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-search="@ViewBag.Search">
 					Next
 				</a>
 			</li>

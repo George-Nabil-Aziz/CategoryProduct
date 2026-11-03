@@ -103,6 +103,36 @@ namespace CategoryProduct.API.Tests
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             return await _client.SendAsync(request);
         }
+
+        [Fact]
+        public async Task Products_Search_Filters_By_Name()
+        {
+            var json = await _client.GetFromJsonAsync<JsonElement>("api/product?search=widget");
+            Assert.Equal(2, json.GetProperty("totalCount").GetInt32());
+        }
+
+        [Fact]
+        public async Task Products_PriceRange_And_Sort_Desc()
+        {
+            var json = await _client.GetFromJsonAsync<JsonElement>("api/product?minPrice=15&maxPrice=30&sortBy=price&desc=true");
+            Assert.Equal(2, json.GetProperty("totalCount").GetInt32());
+            var prices = json.GetProperty("items").EnumerateArray().Select(i => i.GetProperty("price").GetDecimal()).ToList();
+            Assert.Equal(new decimal[] { 30, 20 }, prices);
+        }
+
+        [Fact]
+        public async Task Products_MinPrice_Greater_Than_MaxPrice_Returns_400()
+        {
+            var response = await _client.GetAsync("api/product?minPrice=50&maxPrice=10");
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Categories_Search_Returns_Matching_TotalCount()
+        {
+            var json = await _client.GetFromJsonAsync<JsonElement>("api/category?search=category 2");
+            Assert.Equal(1, json.GetProperty("totalCount").GetInt32());
+        }
     }
 }
 

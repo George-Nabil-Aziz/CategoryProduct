@@ -19,13 +19,20 @@ namespace CategoryProduct.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get(int page = 1, int pageSize = 5)
+        public async Task<IActionResult> Get(int page = 1, int pageSize = 5, string? search = null)
         {
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            var totalCount = await _context.Categories.CountAsync();
-            var categories = await _context.Categories
+            var query = _context.Categories.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(term));
+            }
+
+            var totalCount = await query.CountAsync();
+            var categories = await query
                 .OrderBy(c => c.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)

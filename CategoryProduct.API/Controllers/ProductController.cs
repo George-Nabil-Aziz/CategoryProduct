@@ -19,14 +19,42 @@ namespace CategoryProduct.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get(int page = 1, int pageSize = 5)
+        public async Task<IActionResult> Get(int page = 1, int pageSize = 5, string? search = null,
+            int? categoryId = null, decimal? minPrice = null, decimal? maxPrice = null,
+            string? sortBy = null, bool desc = false)
         {
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            var totalCount = await _context.Products.CountAsync();
-            var products = await _context.Products
-                .OrderBy(p => p.Id)
+            if (minPrice > maxPrice)
+            {
+                ModelState.AddModelError(nameof(minPrice), "minPrice cannot be greater than maxPrice.");
+                return ValidationProblem(ModelState);
+            }
+
+            var query = _context.Products.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(term));
+            }
+            if (categoryId != null) query = query.Where(p => p.CategoryId == categoryId);
+            if (minPrice != null) query = query.Where(p => p.Price >= minPrice);
+            if (maxPrice != null) query = query.Where(p => p.Price <= maxPrice);
+
+            var totalCount = await query.CountAsync();
+
+            var ordered = (sortBy?.ToLowerInvariant(), desc) switch
+            {
+                ("name", false) => query.OrderBy(p => p.Name).ThenBy(p => p.Id),
+                ("name", true) => query.OrderByDescending(p => p.Name).ThenBy(p => p.Id),
+                ("price", false) => query.OrderBy(p => p.Price).ThenBy(p => p.Id),
+                ("price", true) => query.OrderByDescending(p => p.Price).ThenBy(p => p.Id),
+                (_, true) => query.OrderByDescending(p => p.Id),
+                _ => query.OrderBy(p => p.Id)
+            };
+
+            var products = await ordered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
