@@ -80,5 +80,28 @@ namespace CategoryProduct.API.Tests
             var response = await _client.SendAsync(request);
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
+
+        [Fact]
+        public async Task DeleteCategory_WithProducts_Returns409()
+        {
+            var token = await LoginAsync();
+            var cat = await SendAsync(HttpMethod.Post, "api/category", token, new { name = "HasProducts" });
+            var catId = (await cat.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+            var prod = await SendAsync(HttpMethod.Post, "api/product", token, new { name = "Prod", price = 1, quantity = 1, categoryId = catId });
+            Assert.True(prod.IsSuccessStatusCode);
+
+            var del = await SendAsync(HttpMethod.Delete, $"api/category/{catId}", token);
+            Assert.Equal(HttpStatusCode.Conflict, del.StatusCode);
+            var still = await _client.GetAsync($"api/category/{catId}");
+            Assert.Equal(HttpStatusCode.OK, still.StatusCode);
+        }
+
+        private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null)
+        {
+            using var request = new HttpRequestMessage(method, url);
+            if (body != null) request.Content = JsonContent.Create(body);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _client.SendAsync(request);
+        }
     }
 }

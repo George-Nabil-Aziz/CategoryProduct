@@ -99,6 +99,14 @@ namespace CategoryProduct.MVC.Services
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 return new ApiResult { Unauthorized = true };
 
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                string? detail = null;
+                try { detail = (await response.Content.ReadFromJsonAsync<ConflictProblem>())?.Detail; }
+                catch (JsonException) { }
+                return new ApiResult { Conflict = detail ?? "The request conflicts with existing data." };
+            }
+
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
                 var errors = new Dictionary<string, string[]>();
@@ -118,5 +126,6 @@ namespace CategoryProduct.MVC.Services
         public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role);
 
         private record ValidationProblem(Dictionary<string, string[]>? Errors);
+        private record ConflictProblem(string? Title, string? Detail);
     }
 }

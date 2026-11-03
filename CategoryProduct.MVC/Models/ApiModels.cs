@@ -13,6 +13,8 @@ namespace CategoryProduct.MVC.Models
         public bool NotFound { get; init; }
         public bool Unauthorized { get; init; }
         public bool Forbidden { get; init; }
+        /// <summary>409 conflict message from the API.</summary>
+        public string? Conflict { get; init; }
         /// <summary>400 validation errors: field name -> messages.</summary>
         public Dictionary<string, string[]> Errors { get; init; } = new();
     }

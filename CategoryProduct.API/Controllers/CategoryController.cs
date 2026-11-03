@@ -84,6 +84,9 @@ namespace CategoryProduct.API.Controllers
             if (category == null)
                 return NotFound();
 
+            if (await _context.Products.AnyAsync(p => p.CategoryId == id))
+                return Problem(statusCode: 409, title: "Category has products", detail: "Delete or move its products first.");
+
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
 

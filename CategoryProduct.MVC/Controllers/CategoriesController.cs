@@ -105,6 +105,8 @@ namespace CategoryProduct.MVC.Controllers
                 ModelState.AddModelError(string.Empty, "You must be signed in to make changes.");
             if (result.Forbidden)
                 ModelState.AddModelError(string.Empty, "You don't have permission to make changes.");
+            if (result.Conflict != null)
+                ModelState.AddModelError(string.Empty, result.Conflict);
             foreach (var (field, messages) in result.Errors)
                 foreach (var m in messages)
                     ModelState.AddModelError(field, m);
