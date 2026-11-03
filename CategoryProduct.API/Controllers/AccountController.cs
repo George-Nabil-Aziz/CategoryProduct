@@ -1,7 +1,5 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using CategoryProduct.API.Data;
+using CategoryProduct.API.Services;
 using CategoryProduct.API.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +14,12 @@ namespace CategoryProduct.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly IConfiguration _configuration;
+        private readonly TokenService _tokens;
 
-        public AccountController(ApplicationDbContext context, IConfiguration configuration)
+        public AccountController(ApplicationDbContext context, TokenService tokens)
         {
             _context = context;
-            _configuration = configuration;
+            _tokens = tokens;
         }
 
         [HttpPost("register")]
@@ -61,30 +59,64 @@ namespace CategoryProduct.API.Controllers
             if (result == PasswordVerificationResult.Failed)
                 return Unauthorized();
 
-            var expiryMinutes = _configuration.GetValue<int>("Jwt:ExpiryMinutes", 60);
-            var expiresAtUtc = DateTime.UtcNow.AddMinutes(expiryMinutes);
+            return Ok(await IssueAsync(user));
+        }
 
-            var claims = new[]
+        [HttpPost("refresh")]
+        [EnableRateLimiting("refresh")]
+        public async Task<IActionResult> Refresh(RefreshRequestDto request)
+        {
+            var hash = TokenService.Hash(request.RefreshToken ?? string.Empty);
+            var stored = await _context.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
+            if (stored == null)
+                return Unauthorized();
+
+            var now = DateTime.UtcNow;
+            if (stored.RevokedAtUtc != null)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+                var active = await _context.RefreshTokens
+                    .Where(r => r.UserId == stored.UserId && r.RevokedAtUtc == null)
+                    .ToListAsync();
+                foreach (var t in active) t.RevokedAtUtc = now;
+                await _context.SaveChangesAsync();
+                return Unauthorized();
+            }
+            if (stored.ExpiresAtUtc <= now)
+                return Unauthorized();
 
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? string.Empty));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature);
+            var user = await _context.Users.FindAsync(stored.UserId);
+            if (user == null)
+                return Unauthorized();
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: expiresAtUtc,
-                signingCredentials: credentials);
+            var response = await IssueAsync(user, stored);
+            return Ok(response);
+        }
 
-            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout(RefreshRequestDto request)
+        {
+            var hash = TokenService.Hash(request.RefreshToken ?? string.Empty);
+            var stored = await _context.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
+            if (stored != null && stored.RevokedAtUtc == null)
+            {
+                stored.RevokedAtUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+            return NoContent();
+        }
 
-            return Ok(new LoginResponseDto(tokenString, expiresAtUtc, user.Role));
+        private async Task<LoginResponseDto> IssueAsync(Models.User user, Models.RefreshToken? replacing = null)
+        {
+            var (access, accessExpires) = _tokens.CreateAccessToken(user);
+            var (raw, entity) = _tokens.CreateRefreshToken(user.Id);
+            _context.RefreshTokens.Add(entity);
+            if (replacing != null)
+            {
+                replacing.RevokedAtUtc = DateTime.UtcNow;
+                replacing.ReplacedByTokenHash = entity.TokenHash;
+            }
+            await _context.SaveChangesAsync();
+            return new LoginResponseDto(access, accessExpires, user.Role, raw, entity.ExpiresAtUtc);
         }
     }
 }

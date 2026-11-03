@@ -25,6 +25,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("ConnectionStrings:DefaultConnection", "unused");
             builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
             builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
+            builder.UseSetting("RateLimiting:RefreshPermitLimit", "1000");
 
             builder.ConfigureServices(services =>
             {

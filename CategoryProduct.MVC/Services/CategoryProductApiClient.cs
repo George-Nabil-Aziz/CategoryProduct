@@ -35,6 +35,14 @@ namespace CategoryProduct.MVC.Services
             return await response.Content.ReadFromJsonAsync<LoginResult>();
         }
 
+        // Best effort: revokes the refresh token server-side; failures are ignored.
+        public async Task LogoutAsync(string? refreshToken)
+        {
+            if (string.IsNullOrEmpty(refreshToken)) return;
+            try { using var _ = await _http.PostAsJsonAsync("api/account/logout", new { refreshToken }); }
+            catch (Exception) { }
+        }
+
         public Task<ApiResult> RegisterAsync(string userName, string password) =>
             SendAsync(HttpMethod.Post, "api/account/register", new { userName, password });
 
@@ -145,9 +153,9 @@ namespace CategoryProduct.MVC.Services
             return new ApiResult();
         }
 
-        public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role)
+        public record LoginResult(string Token, DateTime ExpiresAtUtc, string Role, string RefreshToken, DateTime RefreshTokenExpiresAtUtc)
         {
-            public static readonly LoginResult TooManyRequests = new("", default, "");
+            public static readonly LoginResult TooManyRequests = new("", default, "", "", default);
         }
 
         private record ValidationProblem(Dictionary<string, string[]>? Errors);

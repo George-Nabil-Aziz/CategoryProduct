@@ -11,7 +11,13 @@ namespace CategoryProduct.MVC.Controllers
     {
         private readonly CategoryProductApiClient _api;
 
-        public AccountController(CategoryProductApiClient api) => _api = api;
+        private readonly AuthSessionService _session;
+
+        public AccountController(CategoryProductApiClient api, AuthSessionService session)
+        {
+            _api = api;
+            _session = session;
+        }
 
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
@@ -45,26 +51,8 @@ namespace CategoryProduct.MVC.Controllers
             return RedirectToAction("Index", "Categories");
         }
 
-        private Task SignInAsync(string userName, CategoryProductApiClient.LoginResult login)
-        {
-            var identity = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim(ClaimTypes.Name, userName),
-                    new Claim(ClaimTypes.Role, login.Role),
-                    new Claim("access_token", login.Token)
-                },
-                CookieAuthenticationDefaults.AuthenticationScheme);
-
-            return HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity),
-                new AuthenticationProperties
-                {
-                    IsPersistent = false,
-                    ExpiresUtc = new DateTimeOffset(DateTime.SpecifyKind(login.ExpiresAtUtc, DateTimeKind.Utc))
-                });
-        }
+        private Task SignInAsync(string userName, CategoryProductApiClient.LoginResult login) =>
+            _session.SignInAsync(HttpContext, userName, login);
 
         [HttpGet]
         public IActionResult Register() => View(new RegisterViewModel());
@@ -107,6 +95,7 @@ namespace CategoryProduct.MVC.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
+            await _api.LogoutAsync(User.FindFirst("refresh_token")?.Value);
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Index", "Categories");
         }

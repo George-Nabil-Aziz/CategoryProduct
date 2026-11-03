@@ -23,9 +23,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddTransient<ApiErrorHandler>();
+builder.Services.AddSingleton<AuthSessionService>();
+builder.Services.AddTransient<TokenRefreshHandler>();
+builder.Services.AddHttpClient(TokenRefreshHandler.RefreshClientName, c =>
+    c.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]!));
 builder.Services.AddHttpClient<CategoryProductApiClient>(c =>
     c.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]!))
-    .AddHttpMessageHandler<ApiErrorHandler>();
+    .AddHttpMessageHandler<ApiErrorHandler>()
+    .AddHttpMessageHandler<TokenRefreshHandler>();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(o => o.Filters.Add<ApiUnavailableFilter>());
