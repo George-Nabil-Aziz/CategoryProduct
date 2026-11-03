@@ -24,6 +24,27 @@ namespace CategoryProduct.API.Controllers
             _configuration = configuration;
         }
 
+        [HttpPost("register")]
+        [EnableRateLimiting("register")]
+        public async Task<IActionResult> Register(RegisterRequestDto request)
+        {
+            var userName = request.UserName.Trim();
+            var lower = userName.ToLower();
+            if (await _context.Users.AnyAsync(u => u.UserName.ToLower() == lower))
+                return Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Username already taken." });
+
+            var user = new Models.User { UserName = userName, PasswordHash = "", Role = "User" };
+            user.PasswordHash = new PasswordHasher<Models.User>().HashPassword(user, request.Password);
+            _context.Users.Add(user);
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateException)
+            {
+                return Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Username already taken." });
+            }
+
+            return StatusCode(StatusCodes.Status201Created, new UserResponseDto(user.Id, user.UserName, user.Role));
+        }
+
         [HttpPost("login")]
         [EnableRateLimiting("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)

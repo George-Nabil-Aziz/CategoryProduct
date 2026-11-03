@@ -24,6 +24,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("Jwt:Audience", "CategoryProduct.Client");
             builder.UseSetting("ConnectionStrings:DefaultConnection", "unused");
             builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
+            builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
 
             builder.ConfigureServices(services =>
             {

@@ -39,16 +39,24 @@ namespace CategoryProduct.MVC.Controllers
                 return View(model);
             }
 
+            await SignInAsync(model.UserName, login);
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
+            return RedirectToAction("Index", "Categories");
+        }
+
+        private Task SignInAsync(string userName, CategoryProductApiClient.LoginResult login)
+        {
             var identity = new ClaimsIdentity(
                 new[]
                 {
-                    new Claim(ClaimTypes.Name, model.UserName),
+                    new Claim(ClaimTypes.Name, userName),
                     new Claim(ClaimTypes.Role, login.Role),
                     new Claim("access_token", login.Token)
                 },
                 CookieAuthenticationDefaults.AuthenticationScheme);
 
-            await HttpContext.SignInAsync(
+            return HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(identity),
                 new AuthenticationProperties
@@ -56,8 +64,39 @@ namespace CategoryProduct.MVC.Controllers
                     IsPersistent = false,
                     ExpiresUtc = new DateTimeOffset(DateTime.SpecifyKind(login.ExpiresAtUtc, DateTimeKind.Utc))
                 });
+        }
 
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
+        [HttpGet]
+        public IActionResult Register() => View(new RegisterViewModel());
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _api.RegisterAsync(model.UserName, model.Password);
+            if (!result.Success)
+            {
+                if (result.TooManyRequests)
+                    ModelState.AddModelError(string.Empty, "Too many attempts. Try again in a minute.");
+                else if (result.Conflict != null)
+                    ModelState.AddModelError(nameof(model.UserName), "Username already taken.");
+                else if (result.Errors.Count > 0)
+                    foreach (var (field, messages) in result.Errors)
+                        foreach (var m in messages)
+                            ModelState.AddModelError(
+                                field is "UserName" or "Password" ? field : string.Empty, m);
+                else
+                    ModelState.AddModelError(string.Empty, "Registration failed. Please try again.");
+                return View(model);
+            }
+
+            var login = await _api.LoginAsync(model.UserName, model.Password);
+            if (login == null || ReferenceEquals(login, CategoryProductApiClient.LoginResult.TooManyRequests))
+                return RedirectToAction(nameof(Login));
+
+            await SignInAsync(model.UserName, login);
             return RedirectToAction("Index", "Categories");
         }
 

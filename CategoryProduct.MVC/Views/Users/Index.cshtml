@@ -1,0 +1,52 @@
+@model IEnumerable<CategoryProduct.MVC.Models.UserItem>
+
+@{
+	ViewData["Title"] = "Users";
+}
+
+<h1>Users</h1>
+
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
+<form method="get" class="row g-2 mb-3">
+	<div class="col-auto"><input name="search" value="@ViewBag.Search" class="form-control" placeholder="Search user name" /></div>
+	<div class="col-auto"><button class="btn btn-primary">Search</button> <a asp-action="Index" class="btn btn-link">Reset</a></div>
+</form>
+
+<table class="table">
+	<thead><tr><th>User name</th><th>Role</th></tr></thead>
+	<tbody>
+		@foreach (var item in Model)
+		{
+			<tr>
+				<td>@item.UserName</td>
+				<td>
+					<form asp-action="ChangeRole" method="post" class="d-flex gap-2">
+						<input type="hidden" name="id" value="@item.Id" />
+						<input type="hidden" name="page" value="@ViewBag.CurrentPage" />
+						<input type="hidden" name="search" value="@ViewBag.Search" />
+						<select name="role" class="form-select form-select-sm w-auto">
+							<option value="User" selected="@(item.Role == "User")">User</option>
+							<option value="Admin" selected="@(item.Role == "Admin")">Admin</option>
+						</select>
+						<button class="btn btn-sm btn-outline-primary">Save</button>
+					</form>
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<nav>
+	<ul class="pagination">
+		@if (ViewBag.CurrentPage > 1)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-search="@ViewBag.Search">Previous</a></li>
+		}
+		@if (ViewBag.CurrentPage < ViewBag.TotalPages)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-search="@ViewBag.Search">Next</a></li>
+		}
+	</ul>
+</nav>

@@ -35,6 +35,22 @@ namespace CategoryProduct.MVC.Services
             return await response.Content.ReadFromJsonAsync<LoginResult>();
         }
 
+        public Task<ApiResult> RegisterAsync(string userName, string password) =>
+            SendAsync(HttpMethod.Post, "api/account/register", new { userName, password });
+
+        public async Task<PagedResult<UserItem>> GetUsersAsync(int page, int pageSize = 10, string? search = null)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get,
+                $"api/users?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}");
+            ApplyBearerToken(request);
+            using var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<PagedResult<UserItem>>())!;
+        }
+
+        public Task<ApiResult> ChangeUserRoleAsync(int id, string role) =>
+            SendAsync(HttpMethod.Put, $"api/users/{id}/role", new { role });
+
         // ---------- Categories ----------
         public async Task<PagedResult<Category>> GetCategoriesAsync(int page, int pageSize = 5, string? search = null) =>
             (await _http.GetFromJsonAsync<PagedResult<Category>>($"api/category?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}"))!;
@@ -101,6 +117,7 @@ namespace CategoryProduct.MVC.Services
             if (response.IsSuccessStatusCode) return new ApiResult { Success = true };
             if (response.StatusCode == HttpStatusCode.NotFound) return new ApiResult { NotFound = true };
             if (response.StatusCode == HttpStatusCode.Forbidden) return new ApiResult { Forbidden = true };
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) return new ApiResult { TooManyRequests = true };
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 return new ApiResult { Unauthorized = true };
 
