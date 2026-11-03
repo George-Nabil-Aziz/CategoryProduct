@@ -20,13 +20,19 @@ namespace CategoryProduct.API.Controllers
         [HttpGet]
         public IActionResult Get(int page = 1, int pageSize = 5)
         {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var totalCount = _context.Categories.Count();
             var categories = _context.Categories
+                .OrderBy(c => c.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(c => new CategoryResponseDto(c.Id, c.Name))
                 .ToList();
 
-            return Ok(categories);
+            return Ok(new PagedResponseDto<CategoryResponseDto>(
+                categories, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
         }
 
         [HttpGet("{id}")]

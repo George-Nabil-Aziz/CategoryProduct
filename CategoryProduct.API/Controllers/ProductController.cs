@@ -20,13 +20,19 @@ namespace CategoryProduct.API.Controllers
         [HttpGet]
         public IActionResult Get(int page = 1, int pageSize = 5)
         {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var totalCount = _context.Products.Count();
             var products = _context.Products
+                .OrderBy(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
                 .ToList();
 
-            return Ok(products);
+            return Ok(new PagedResponseDto<ProductResponseDto>(
+                products, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
         }
 
         [HttpGet("{id}")]
@@ -44,6 +50,12 @@ namespace CategoryProduct.API.Controllers
         [HttpPost]
         public IActionResult Post(ProductRequestDto request)
         {
+            if (!_context.Categories.Any(c => c.Id == request.CategoryId))
+            {
+                ModelState.AddModelError(nameof(request.CategoryId), "Category does not exist.");
+                return ValidationProblem(ModelState);
+            }
+
             var product = new Product
             {
                 Name = request.Name,
@@ -62,6 +74,12 @@ namespace CategoryProduct.API.Controllers
         [HttpPut("{id}")]
         public IActionResult Put(int id, ProductRequestDto request)
         {
+            if (!_context.Categories.Any(c => c.Id == request.CategoryId))
+            {
+                ModelState.AddModelError(nameof(request.CategoryId), "Category does not exist.");
+                return ValidationProblem(ModelState);
+            }
+
             var oldProduct = _context.Products.Find(id);
 
             if (oldProduct == null)
