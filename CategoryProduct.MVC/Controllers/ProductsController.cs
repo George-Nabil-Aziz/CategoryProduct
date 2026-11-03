@@ -1,5 +1,8 @@
 using CategoryProduct.MVC.Models;
 using CategoryProduct.MVC.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -31,12 +34,14 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
+        [Authorize]
         public async Task<IActionResult> Create()
         {
             await LoadCategoriesAsync(null);
             return View();
         }
 
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name,Price,Quantity,CategoryId")] Product product)
@@ -46,12 +51,14 @@ namespace CategoryProduct.MVC.Controllers
                 var result = await _api.CreateProductAsync(product);
                 if (result.Success) return RedirectToAction(nameof(Index));
                 if (result.NotFound) return NotFound();
+                if (result.Unauthorized) return await SessionExpiredAsync();
                 AddErrors(result);
             }
             await LoadCategoriesAsync(product.CategoryId);
             return View(product);
         }
 
+        [Authorize]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -61,6 +68,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int? id, [Bind("Id,Name,Price,Quantity,CategoryId")] Product product)
@@ -71,12 +79,14 @@ namespace CategoryProduct.MVC.Controllers
                 var result = await _api.UpdateProductAsync(product.Id, product);
                 if (result.Success) return RedirectToAction(nameof(Index));
                 if (result.NotFound) return NotFound();
+                if (result.Unauthorized) return await SessionExpiredAsync();
                 AddErrors(result);
             }
             await LoadCategoriesAsync(product.CategoryId);
             return View(product);
         }
 
+        [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -86,6 +96,7 @@ namespace CategoryProduct.MVC.Controllers
             return View(product);
         }
 
+        [Authorize]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int? id)
@@ -94,6 +105,7 @@ namespace CategoryProduct.MVC.Controllers
             var result = await _api.DeleteProductAsync(id.Value);
             if (result.Success) return RedirectToAction(nameof(Index));
             if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
             AddErrors(result);
             var product = await _api.GetProductAsync(id.Value);
             if (product == null) return NotFound();
@@ -106,6 +118,12 @@ namespace CategoryProduct.MVC.Controllers
 
         private async Task ResolveCategoryNameAsync(Product product) =>
             product.CategoryName = (await _api.GetCategoryAsync(product.CategoryId))?.Name;
+
+        private async Task<IActionResult> SessionExpiredAsync()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("Login", "Account", new { returnUrl = Request.Path + Request.QueryString });
+        }
 
         private void AddErrors(ApiResult result)
         {

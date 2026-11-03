@@ -1,5 +1,8 @@
 using CategoryProduct.MVC.Models;
 using CategoryProduct.MVC.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategoryProduct.MVC.Controllers
@@ -27,8 +30,10 @@ namespace CategoryProduct.MVC.Controllers
             return View(category);
         }
 
+        [Authorize]
         public IActionResult Create() => View();
 
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name")] Category category)
@@ -37,10 +42,12 @@ namespace CategoryProduct.MVC.Controllers
             var result = await _api.CreateCategoryAsync(category);
             if (result.Success) return RedirectToAction(nameof(Index));
             if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
             AddErrors(result);
             return View(category);
         }
 
+        [Authorize]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -48,6 +55,7 @@ namespace CategoryProduct.MVC.Controllers
             return category == null ? NotFound() : View(category);
         }
 
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int? id, [Bind("Id,Name")] Category category)
@@ -57,10 +65,12 @@ namespace CategoryProduct.MVC.Controllers
             var result = await _api.UpdateCategoryAsync(category.Id, category);
             if (result.Success) return RedirectToAction(nameof(Index));
             if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
             AddErrors(result);
             return View(category);
         }
 
+        [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -68,6 +78,7 @@ namespace CategoryProduct.MVC.Controllers
             return category == null ? NotFound() : View(category);
         }
 
+        [Authorize]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int? id)
@@ -76,9 +87,16 @@ namespace CategoryProduct.MVC.Controllers
             var result = await _api.DeleteCategoryAsync(id.Value);
             if (result.Success) return RedirectToAction(nameof(Index));
             if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
             AddErrors(result);
             var category = await _api.GetCategoryAsync(id.Value);
             return category == null ? NotFound() : View("Delete", category);
+        }
+
+        private async Task<IActionResult> SessionExpiredAsync()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("Login", "Account", new { returnUrl = Request.Path + Request.QueryString });
         }
 
         private void AddErrors(ApiResult result)

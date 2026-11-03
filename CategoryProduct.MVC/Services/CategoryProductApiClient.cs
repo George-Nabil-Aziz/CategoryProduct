@@ -10,13 +10,28 @@ namespace CategoryProduct.MVC.Services
         private const int MaxPageSize = 50;
         private readonly HttpClient _http;
 
-        public CategoryProductApiClient(HttpClient http) => _http = http;
+        private readonly IHttpContextAccessor _context;
 
-        // Single hook for attaching a JWT bearer token. No token source yet (login comes later).
-        private void ApplyBearerToken(string? token = null)
+        public CategoryProductApiClient(HttpClient http, IHttpContextAccessor context)
         {
-            _http.DefaultRequestHeaders.Authorization =
-                string.IsNullOrEmpty(token) ? null : new AuthenticationHeaderValue("Bearer", token);
+            _http = http;
+            _context = context;
+        }
+
+        // Attaches the signed-in user's JWT (stored in the auth cookie) to a single outgoing request.
+        private void ApplyBearerToken(HttpRequestMessage request, string? token = null)
+        {
+            token ??= _context.HttpContext?.User.FindFirst("access_token")?.Value;
+            if (!string.IsNullOrEmpty(token))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        public async Task<LoginResult?> LoginAsync(string userName, string password)
+        {
+            using var response = await _http.PostAsJsonAsync("api/account/login", new { userName, password });
+            if (response.StatusCode == HttpStatusCode.Unauthorized) return null;
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<LoginResult>();
         }
 
         // ---------- Categories ----------
@@ -72,9 +87,9 @@ namespace CategoryProduct.MVC.Services
 
         private async Task<ApiResult> SendAsync(HttpMethod method, string url, object? body = null)
         {
-            ApplyBearerToken(); // TODO: pass the signed-in user's token once login exists
             using var request = new HttpRequestMessage(method, url);
             if (body != null) request.Content = JsonContent.Create(body);
+            ApplyBearerToken(request);
 
             using var response = await _http.SendAsync(request);
 
@@ -98,6 +113,8 @@ namespace CategoryProduct.MVC.Services
             response.EnsureSuccessStatusCode();
             return new ApiResult();
         }
+
+        public record LoginResult(string Token, DateTime ExpiresAtUtc);
 
         private record ValidationProblem(Dictionary<string, string[]>? Errors);
     }
