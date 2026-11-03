@@ -370,3 +370,5 @@ FodyWeavers.xsd
 .squad/.last-copy-prompt.md
 .squad/runs/
 # End squad-kit block
+
+logs/

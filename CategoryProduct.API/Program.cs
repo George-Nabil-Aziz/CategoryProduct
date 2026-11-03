@@ -1,3 +1,4 @@
+using Serilog;
 using System.Text;
 using CategoryProduct.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,6 +9,13 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<CategoryProduct.API.Infrastructure.GlobalExceptionHandler>();
 
 var jwtKey = builder.Configuration["Jwt:Key"];
 if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
@@ -75,6 +83,10 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseSerilogRequestLogging();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
