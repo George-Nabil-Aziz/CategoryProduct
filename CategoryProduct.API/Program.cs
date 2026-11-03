@@ -1,4 +1,5 @@
 using Serilog;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text;
 using CategoryProduct.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -15,6 +16,7 @@ builder.Host.UseSerilog((ctx, services, cfg) => cfg
     .ReadFrom.Services(services)
     .Enrich.FromLogContext());
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>("database");
 builder.Services.AddExceptionHandler<CategoryProduct.API.Infrastructure.GlobalExceptionHandler>();
 
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -86,7 +88,10 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
+    ex != null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
+    : ctx.Request.Path.StartsWithSegments("/health") ? Serilog.Events.LogEventLevel.Verbose
+    : Serilog.Events.LogEventLevel.Information);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -102,6 +107,10 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = CategoryProduct.API.Infrastructure.HealthCheckResponseWriter.WriteAsync
+}).AllowAnonymous();
 
 app.Run();
 
