@@ -5,6 +5,7 @@ using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CategoryProduct.API.Controllers
@@ -23,10 +24,10 @@ namespace CategoryProduct.API.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login(LoginRequestDto request)
+        public async Task<IActionResult> Login(LoginRequestDto request)
         {
-            var user = _context.Users
-                .FirstOrDefault(u => u.UserName.ToLower() == request.UserName.ToLower());
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == request.UserName.ToLower());
 
             if (user == null)
                 return Unauthorized();

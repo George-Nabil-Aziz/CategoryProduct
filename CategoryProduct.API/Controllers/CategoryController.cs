@@ -3,6 +3,7 @@ using CategoryProduct.API.Dtos;
 using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CategoryProduct.API.Controllers
 {
@@ -18,27 +19,27 @@ namespace CategoryProduct.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get(int page = 1, int pageSize = 5)
+        public async Task<IActionResult> Get(int page = 1, int pageSize = 5)
         {
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            var totalCount = _context.Categories.Count();
-            var categories = _context.Categories
+            var totalCount = await _context.Categories.CountAsync();
+            var categories = await _context.Categories
                 .OrderBy(c => c.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(c => new CategoryResponseDto(c.Id, c.Name))
-                .ToList();
+                .ToListAsync();
 
             return Ok(new PagedResponseDto<CategoryResponseDto>(
                 categories, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var category = _context.Categories.Find(id);
+            var category = await _context.Categories.FindAsync(id);
 
             if (category == null)
                 return NotFound();
@@ -48,54 +49,54 @@ namespace CategoryProduct.API.Controllers
 
         [Authorize]
         [HttpPost]
-        public IActionResult Post(CategoryRequestDto request)
+        public async Task<IActionResult> Post(CategoryRequestDto request)
         {
             var category = new Category { Name = request.Name };
 
             _context.Categories.Add(category);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok(new CategoryResponseDto(category.Id, category.Name));
         }
 
         [Authorize]
         [HttpPut("{id}")]
-        public IActionResult Put(int id, CategoryRequestDto request)
+        public async Task<IActionResult> Put(int id, CategoryRequestDto request)
         {
-            var oldCategory = _context.Categories.Find(id);
+            var oldCategory = await _context.Categories.FindAsync(id);
 
             if (oldCategory == null)
                 return NotFound();
 
             oldCategory.Name = request.Name;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok(new CategoryResponseDto(oldCategory.Id, oldCategory.Name));
         }
 
         [Authorize]
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var category = _context.Categories.Find(id);
+            var category = await _context.Categories.FindAsync(id);
 
             if (category == null)
                 return NotFound();
 
             _context.Categories.Remove(category);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         [HttpGet("{catId}/products")]
-        public IActionResult GetAllProducts(int catId)
+        public async Task<IActionResult> GetAllProducts(int catId)
         {
-            var products = _context.Products
+            var products = await _context.Products
                 .Where(p => p.CategoryId == catId)
                 .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
-                .ToList();
+                .ToListAsync();
 
             return Ok(products);
         }
