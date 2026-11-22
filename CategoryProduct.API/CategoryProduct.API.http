@@ -4,3 +4,67 @@ GET {{CategoryProduct.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Cart and orders (019). Replace {{token}} with a JWT from POST /api/account/login.
+
+GET {{CategoryProduct.API_HostAddress}}/api/cart
+Authorization: Bearer {{token}}
+
+###
+
+POST {{CategoryProduct.API_HostAddress}}/api/cart/items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "productId": 1, "quantity": 2 }
+
+###
+
+PUT {{CategoryProduct.API_HostAddress}}/api/cart/items/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "quantity": 3 }
+
+###
+
+DELETE {{CategoryProduct.API_HostAddress}}/api/cart/items/1
+Authorization: Bearer {{token}}
+
+###
+
+DELETE {{CategoryProduct.API_HostAddress}}/api/cart
+Authorization: Bearer {{token}}
+
+###
+
+POST {{CategoryProduct.API_HostAddress}}/api/orders
+Authorization: Bearer {{token}}
+
+###
+
+GET {{CategoryProduct.API_HostAddress}}/api/orders?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+
+GET {{CategoryProduct.API_HostAddress}}/api/orders/1
+Authorization: Bearer {{token}}
+
+###
+
+POST {{CategoryProduct.API_HostAddress}}/api/orders/1/cancel
+Authorization: Bearer {{token}}
+
+###
+
+GET {{CategoryProduct.API_HostAddress}}/api/orders/all?status=Pending&page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+
+PUT {{CategoryProduct.API_HostAddress}}/api/orders/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "Confirmed" }

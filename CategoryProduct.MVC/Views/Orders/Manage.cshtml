@@ -1,0 +1,74 @@
+@model IEnumerable<CategoryProduct.MVC.Models.OrderSummaryItem>
+
+@{
+	ViewData["Title"] = "Manage Orders";
+	string? filter = ViewBag.Status;
+}
+
+<h1>Manage Orders</h1>
+
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
+<form method="get" class="row g-2 mb-3">
+	<div class="col-auto">
+		<select name="status" class="form-select">
+			<option value="">All</option>
+			@foreach (var s in new[] { "Pending", "Confirmed", "Cancelled" })
+			{
+				<option value="@s" selected="@(filter == s)">@s</option>
+			}
+		</select>
+	</div>
+	<div class="col-auto"><button class="btn btn-primary">Filter</button> <a asp-action="Manage" class="btn btn-link">Reset</a></div>
+</form>
+
+<table class="table align-middle">
+	<thead><tr><th>Order</th><th>User</th><th>Date</th><th>Status</th><th>Total</th><th></th></tr></thead>
+	<tbody>
+		@foreach (var o in Model)
+		{
+			<tr>
+				<td>#@o.Id</td>
+				<td>@o.UserName</td>
+				<td>@o.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+				<td><partial name="_OrderStatusBadge" model="o.Status" /></td>
+				<td>@o.Total.ToString("N2")</td>
+				<td>
+					<div class="d-flex gap-2 align-items-center">
+						<a asp-action="Details" asp-route-id="@o.Id">Details</a>
+						@if (o.Status == "Pending")
+						{
+							<form asp-action="SetStatus" asp-route-id="@o.Id" method="post">
+								<input type="hidden" name="status" value="Confirmed" />
+								<input type="hidden" name="returnTo" value="manage" />
+								<input type="hidden" name="page" value="@ViewBag.CurrentPage" />
+								<input type="hidden" name="filter" value="@filter" />
+								<button class="btn btn-sm btn-success">Confirm</button>
+							</form>
+							<form asp-action="Cancel" asp-route-id="@o.Id" method="post">
+								<input type="hidden" name="returnTo" value="manage" />
+								<input type="hidden" name="page" value="@ViewBag.CurrentPage" />
+								<input type="hidden" name="filter" value="@filter" />
+								<button class="btn btn-sm btn-outline-danger">Cancel</button>
+							</form>
+						}
+					</div>
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<nav>
+	<ul class="pagination">
+		@if (ViewBag.CurrentPage > 1)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Manage" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-status="@filter">Previous</a></li>
+		}
+		@if (ViewBag.CurrentPage < ViewBag.TotalPages)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Manage" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-status="@filter">Next</a></li>
+		}
+	</ul>
+</nav>

@@ -299,6 +299,23 @@ namespace CategoryProduct.API.Tests
             Assert.Equal(4, (await db.Products.FindAsync(b))!.Quantity);
         }
 
+        [Fact]
+        public async Task Service_StageMovement_InsufficientStock_StagesNothing()
+        {
+            var (db, svc) = UnitService();
+            var id = await SeedAsync(db, 2);
+            var stamp = (await db.Products.FindAsync(id))!.ConcurrencyStamp;
+
+            var result = await svc.StageMovementAsync(id, -3, StockMovementReason.Sale, null, null);
+            await db.SaveChangesAsync();
+
+            Assert.Equal(MovementStatus.InsufficientStock, result.Status);
+            var p = (await db.Products.FindAsync(id))!;
+            Assert.Equal(2, p.Quantity);
+            Assert.Equal(stamp, p.ConcurrencyStamp);
+            Assert.Equal(0, await db.StockMovements.CountAsync());
+        }
+
         // ---------- US1 concurrency ----------
         public class RaceInterceptor : SaveChangesInterceptor
         {

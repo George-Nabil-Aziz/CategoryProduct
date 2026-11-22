@@ -6,6 +6,9 @@
 
 <h1>Details</h1>
 
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
 <div>
 	<h4>Product</h4>
 	<hr />
@@ -45,6 +48,16 @@
 	@if (Model.ImageUrl != null)
 	{
 		<img src="@Url.Action("Image", "Products", new { id = Model.Id })" alt="@Model.Name" class="img-thumbnail mb-3" style="max-width:320px" />
+	}
+
+	@if (User.Identity?.IsAuthenticated == true)
+	{
+		<form asp-controller="Cart" asp-action="Add" method="post" class="d-flex gap-2 mb-3" style="max-width:260px">
+			<input type="hidden" name="productId" value="@Model.Id" />
+			<input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+			<input type="number" name="quantity" value="1" min="1" max="100" class="form-control" />
+			<button class="btn btn-primary text-nowrap">Add to cart</button>
+		</form>
 	}
 
 	@if (User.IsInRole("Admin"))

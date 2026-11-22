@@ -148,7 +148,87 @@ namespace CategoryProduct.MVC.Services
         public Task<ApiResult> AddStockMovementAsync(int id, StockMovementRequest r) =>
             SendAsync(HttpMethod.Post, $"api/product/{id}/stock-movements", r);
 
+        // ---------- Cart and orders (signed-in users) ----------
+        public Task<ApiResult<CartModel>> GetCartAsync() => GetAsync<CartModel>("api/cart");
+
+        public Task<ApiResult<CartModel>> AddCartItemAsync(int productId, int quantity) =>
+            SendAsync<CartModel>(HttpMethod.Post, "api/cart/items", new AddCartItemRequest(productId, quantity));
+
+        public Task<ApiResult<CartModel>> UpdateCartItemAsync(int productId, int quantity) =>
+            SendAsync<CartModel>(HttpMethod.Put, $"api/cart/items/{productId}", new UpdateCartItemRequest(quantity));
+
+        public Task<ApiResult<CartModel>> RemoveCartItemAsync(int productId) =>
+            SendAsync<CartModel>(HttpMethod.Delete, $"api/cart/items/{productId}");
+
+        public Task<ApiResult> ClearCartAsync() => SendAsync(HttpMethod.Delete, "api/cart");
+
+        public Task<ApiResult<OrderModel>> CheckoutAsync() => SendAsync<OrderModel>(HttpMethod.Post, "api/orders");
+
+        public Task<ApiResult<PagedResult<OrderSummaryItem>>> GetMyOrdersAsync(int page, int pageSize = 10) =>
+            GetAsync<PagedResult<OrderSummaryItem>>($"api/orders?page={page}&pageSize={pageSize}");
+
+        public Task<ApiResult<OrderModel>> GetOrderAsync(int id) => GetAsync<OrderModel>($"api/orders/{id}");
+
+        public Task<ApiResult<PagedResult<OrderSummaryItem>>> GetAllOrdersAsync(string? status, int page, int pageSize = 10) =>
+            GetAsync<PagedResult<OrderSummaryItem>>(
+                $"api/orders/all?page={page}&pageSize={pageSize}&status={Uri.EscapeDataString(status ?? "")}");
+
+        public Task<ApiResult<OrderModel>> CancelOrderAsync(int id) =>
+            SendAsync<OrderModel>(HttpMethod.Post, $"api/orders/{id}/cancel");
+
+        public Task<ApiResult<OrderModel>> SetOrderStatusAsync(int id, string status) =>
+            SendAsync<OrderModel>(HttpMethod.Put, $"api/orders/{id}/status", new UpdateOrderStatusRequest(status));
+
         // ---------- helpers ----------
+        private async Task<ApiResult<T>> GetAsync<T>(string url)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            ApplyBearerToken(request);
+            using var response = await _http.SendAsync(request);
+            return await ToResultAsync<T>(response);
+        }
+
+        private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body = null)
+        {
+            using var request = new HttpRequestMessage(method, url) { Content = body != null ? JsonContent.Create(body) : null };
+            ApplyBearerToken(request);
+            using var response = await _http.SendAsync(request);
+            return await ToResultAsync<T>(response);
+        }
+
+        private static async Task<ApiResult<T>> ToResultAsync<T>(HttpResponseMessage response)
+        {
+            if (response.IsSuccessStatusCode)
+                return new ApiResult<T> { Success = true, Value = await response.Content.ReadFromJsonAsync<T>() };
+            if (response.StatusCode == HttpStatusCode.NotFound) return new ApiResult<T> { NotFound = true };
+            if (response.StatusCode == HttpStatusCode.Forbidden) return new ApiResult<T> { Forbidden = true };
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) return new ApiResult<T> { TooManyRequests = true };
+            if (response.StatusCode == HttpStatusCode.Unauthorized) return new ApiResult<T> { Unauthorized = true };
+
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                string? detail = null;
+                try { detail = (await response.Content.ReadFromJsonAsync<ConflictProblem>())?.Detail; }
+                catch (JsonException) { }
+                return new ApiResult<T> { Conflict = detail ?? "The request conflicts with existing data." };
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+            {
+                var errors = new Dictionary<string, string[]>();
+                try
+                {
+                    var problem = await response.Content.ReadFromJsonAsync<ValidationProblem>();
+                    if (problem?.Errors != null) errors = problem.Errors;
+                }
+                catch (JsonException) { }
+                return new ApiResult<T> { Errors = errors };
+            }
+
+            response.EnsureSuccessStatusCode();
+            return new ApiResult<T>();
+        }
+
         private async Task<T?> GetOrNullAsync<T>(string url) where T : class
         {
             var response = await _http.GetAsync(url);

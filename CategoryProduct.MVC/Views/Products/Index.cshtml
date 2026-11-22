@@ -6,6 +6,9 @@
 
 <h1>Index</h1>
 
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
 <p>
 	@if (User.IsInRole("Admin")) { <a asp-action="Create">Create New</a> }
 </p>
@@ -73,6 +76,15 @@
 					@if (User.IsInRole("Admin")) { <text><a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |</text> }
 					<a asp-action="Details" asp-route-id="@item.Id">Details</a>
 					@if (User.IsInRole("Admin")) { <text> | <a asp-action="Delete" asp-route-id="@item.Id">Delete</a></text> }
+					@if (User.Identity?.IsAuthenticated == true)
+					{
+						<form asp-controller="Cart" asp-action="Add" method="post" class="d-inline-flex gap-1 align-items-center ms-2">
+							<input type="hidden" name="productId" value="@item.Id" />
+							<input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+							<input type="number" name="quantity" value="1" min="1" max="100" class="form-control form-control-sm" style="width:70px" />
+							<button class="btn btn-sm btn-outline-primary">Add to cart</button>
+						</form>
+					}
 				</td>
 			</tr>
 		}

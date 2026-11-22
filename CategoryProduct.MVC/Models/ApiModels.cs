@@ -10,6 +10,18 @@ namespace CategoryProduct.MVC.Models
 
     public record StockMovementRequest(int QuantityChange, string Reason, string? Note);
 
+    public record AddCartItemRequest(int ProductId, int Quantity);
+
+    public record UpdateCartItemRequest(int Quantity);
+
+    public record UpdateOrderStatusRequest(string Status);
+
+    /// <summary>Outcome of a call that returns a body on success.</summary>
+    public class ApiResult<T> : ApiResult
+    {
+        public T? Value { get; init; }
+    }
+
     /// <summary>Outcome of a write call (POST/PUT/DELETE).</summary>
     public class ApiResult
     {

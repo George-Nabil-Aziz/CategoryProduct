@@ -1,0 +1,5 @@
+@model string
+@{
+	var cls = Model switch { "Confirmed" => "bg-success", "Cancelled" => "bg-secondary", _ => "bg-warning text-dark" };
+}
+<span class="badge @cls">@Model</span>

@@ -1,0 +1,47 @@
+@model IEnumerable<CategoryProduct.MVC.Models.OrderSummaryItem>
+
+@{
+	ViewData["Title"] = "My Orders";
+}
+
+<h1>My Orders</h1>
+
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
+@if (!Model.Any())
+{
+	<p>You have no orders yet.</p>
+}
+else
+{
+	<table class="table">
+		<thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Items</th><th>Total</th><th></th></tr></thead>
+		<tbody>
+			@foreach (var o in Model)
+			{
+				<tr>
+					<td>#@o.Id</td>
+					<td>@o.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+					<td><partial name="_OrderStatusBadge" model="o.Status" /></td>
+					<td>@o.ItemCount</td>
+					<td>@o.Total.ToString("N2")</td>
+					<td><a asp-action="Details" asp-route-id="@o.Id">Details</a></td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+<nav>
+	<ul class="pagination">
+		@if (ViewBag.CurrentPage > 1)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)">Previous</a></li>
+		}
+		@if (ViewBag.CurrentPage < ViewBag.TotalPages)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)">Next</a></li>
+		}
+	</ul>
+</nav>

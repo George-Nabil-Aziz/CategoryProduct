@@ -15,6 +15,9 @@ namespace CategoryProduct.API.Data
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<StockMovement> StockMovements { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,6 +40,31 @@ namespace CategoryProduct.API.Data
                 b.HasOne(m => m.Product).WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
                 b.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.SetNull);
                 b.HasIndex(m => new { m.ProductId, m.CreatedAtUtc });
+            });
+
+            modelBuilder.Entity<CartItem>(b =>
+            {
+                b.HasIndex(c => new { c.UserId, c.ProductId }).IsUnique();
+                b.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(c => c.Product).WithMany().HasForeignKey(c => c.ProductId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Order>(b =>
+            {
+                b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+                b.Property(o => o.Total).HasColumnType("decimal(18,2)");
+                b.Property(o => o.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne(o => o.User).WithMany().HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.Restrict);
+                b.HasMany(o => o.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+                b.HasIndex(o => new { o.UserId, o.CreatedAtUtc });
+            });
+
+            modelBuilder.Entity<OrderItem>(b =>
+            {
+                b.Property(i => i.ProductName).HasMaxLength(100).IsRequired();
+                b.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
+                b.Property(i => i.LineTotal).HasColumnType("decimal(18,2)");
+                b.HasOne<Product>().WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<User>()
