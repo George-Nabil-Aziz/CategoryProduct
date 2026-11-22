@@ -212,6 +212,93 @@ public class AccountTests : MvcTestBase
         Assert.Empty(Fake.Requests);
     }
 
+    // ---------- optional email on register (024-email-notifications) ----------
+
+    private static Dictionary<string, string> RegEmail(string email)
+    {
+        var f = Reg("bob");
+        f["Email"] = email;
+        return f;
+    }
+
+    [Fact]
+    public async Task Register_get_has_optional_email_input()
+    {
+        var html = await GetHtmlAsync("/Account/Register");
+        Assert.Contains("name=\"Email\"", html);
+        Assert.Contains("type=\"email\"", html);
+        Assert.Contains("autocomplete=\"email\"", html);
+        Assert.True(HtmlHelpers.HasText(html, "Email (optional)"));
+    }
+
+    [Fact]
+    public async Task Register_valid_email_is_sent_to_the_api()
+    {
+        Fake.On(HttpMethod.Post, "api/account/register", FakeResponse.Status(201));
+        ScriptLogin("User");
+        var resp = await PostFormAsync("/Account/Register", RegEmail("  bob@example.com "));
+        Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
+
+        var reg = Fake.Single(HttpMethod.Post, "api/account/register");
+        Assert.Equal("bob@example.com", reg.Json().GetProperty("email").GetString());
+        Assert.Equal("bob", reg.Json().GetProperty("userName").GetString());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Register_empty_email_is_omitted_or_null(string email)
+    {
+        Fake.On(HttpMethod.Post, "api/account/register", FakeResponse.Status(201));
+        ScriptLogin("User");
+        await PostFormAsync("/Account/Register", RegEmail(email));
+
+        var json = Fake.Single(HttpMethod.Post, "api/account/register").Json();
+        Assert.True(!json.TryGetProperty("email", out var value) || value.ValueKind == System.Text.Json.JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Register_without_email_field_still_works()
+    {
+        Fake.On(HttpMethod.Post, "api/account/register", FakeResponse.Status(201));
+        ScriptLogin("User");
+        var resp = await PostFormAsync("/Account/Register", Reg("bob"));
+        Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_api_400_email_error_shows_on_the_email_field()
+    {
+        Fake.On(HttpMethod.Post, "api/account/register",
+            FakeResponse.Json(400, ApiJson.ValidationProblem("Email", "Email is not a valid address.")));
+        var resp = await PostFormAsync("/Account/Register", RegEmail("a@b"));
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.Equal("Email is not a valid address.", HtmlHelpers.FieldError(html, "Email"));
+        Assert.Null(HtmlHelpers.FieldError(html, "UserName"));
+    }
+
+    [Fact]
+    public async Task Register_api_409_email_in_use_shows_on_the_email_field_not_the_username()
+    {
+        Fake.On(HttpMethod.Post, "api/account/register",
+            FakeResponse.Json(409, ApiJson.ConflictProblem("Email already in use.")));
+        var resp = await PostFormAsync("/Account/Register", RegEmail("taken@example.com"));
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.Equal("Email already in use.", HtmlHelpers.FieldError(html, "Email"));
+        Assert.Null(HtmlHelpers.FieldError(html, "UserName"));
+    }
+
+    [Fact]
+    public async Task Register_invalid_email_rerenders_without_calling_api()
+    {
+        var resp = await PostFormAsync("/Account/Register", RegEmail("not an email"));
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.NotNull(HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), "Email"));
+        Assert.Empty(Fake.Requests);
+    }
+
     private Task<HttpResponseMessage> LogoutAsync() =>
         PostFormAsync("/Account/Logout", new Dictionary<string, string>(), tokenPageUrl: "/Account/AccessDenied");
 

@@ -14,7 +14,7 @@
 | `Email:Smtp:Password` | `Email__Smtp__Password` | empty | secret; user secrets or environment only |
 | `Email:Smtp:EnableSsl` | `Email__Smtp__EnableSsl` | `true` | |
 
-Empty string for `Enabled`, `Port` or `EnableSsl` is treated as unset (compose passes empty defaults).
+Empty or unparsable `Enabled`, `Port` or `EnableSsl` is treated as unset (the options are bound by hand because the generic binder throws on an empty bool/int). Compose therefore passes explicit non-empty defaults for bool/int/provider/from; only host, user name and password default to empty (empty means unset).
 
 ## appsettings.json (tracked; no secrets)
 
@@ -37,15 +37,15 @@ Empty string for `Enabled`, `Port` or `EnableSsl` is treated as unset (compose p
 ## docker-compose.yml (`api.environment`, added lines) and volume
 
 ```yaml
-      Email__Enabled: ${EMAIL_ENABLED:-}
-      Email__Provider: ${EMAIL_PROVIDER:-}
-      Email__From: ${EMAIL_FROM:-}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__Provider: ${EMAIL_PROVIDER:-Pickup}
+      Email__From: ${EMAIL_FROM:-noreply@categoryproduct.local}
       Email__PickupDirectory: /data/email-outbox
       Email__Smtp__Host: ${EMAIL_SMTP_HOST:-}
-      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-}
+      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-587}
       Email__Smtp__UserName: ${EMAIL_SMTP_USERNAME:-}
       Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}
-      Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLESSL:-}
+      Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLESSL:-true}
     volumes:
       - productimages:/data/product-images
       - emailoutbox:/data/email-outbox
@@ -53,7 +53,7 @@ Empty string for `Enabled`, `Port` or `EnableSsl` is treated as unset (compose p
   emailoutbox:
 ```
 
-All optional (no `:?`). An empty `Email__Provider`/`Email__From` reads as an empty string: the code treats empty as "use the default".
+All optional (no `:?`). Empty host, user name and password mean "not configured"; the code also treats an empty provider or from as "use the default".
 
 ## CategoryProduct.API/Dockerfile (added line next to the product-images one)
 

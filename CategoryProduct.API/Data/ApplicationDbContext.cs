@@ -71,6 +71,12 @@ namespace CategoryProduct.API.Data
                 .HasIndex(u => u.UserName)
                 .IsUnique();
 
+            modelBuilder.Entity<User>(b =>
+            {
+                b.Property(u => u.Email).HasMaxLength(254);
+                b.HasIndex(u => u.Email).IsUnique().HasFilter("[Email] IS NOT NULL");
+            });
+
             modelBuilder.Entity<User>()
                 .Property(u => u.Role)
                 .HasMaxLength(20)

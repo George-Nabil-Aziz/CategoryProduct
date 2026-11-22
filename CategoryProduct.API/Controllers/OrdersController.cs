@@ -18,13 +18,15 @@ namespace CategoryProduct.API.Controllers
         private const int MaxAttempts = 3;
         private readonly ApplicationDbContext _context;
         private readonly InventoryService _inventory;
+        private readonly NotificationService _notifications;
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(ApplicationDbContext context, InventoryService inventory,
+        public OrdersController(ApplicationDbContext context, InventoryService inventory, NotificationService notifications,
             ILogger<OrdersController> logger)
         {
             _context = context;
             _inventory = inventory;
+            _notifications = notifications;
             _logger = logger;
         }
 
@@ -103,6 +105,8 @@ namespace CategoryProduct.API.Controllers
                     foreach (var m in movements) _inventory.LogIfLowStock(m);
 
                     await _context.Users.FindAsync(userId); // navigation fix-up fills order.User
+                    await _notifications.OrderPlacedAsync(order);
+                    await _notifications.LowStockAsync(movements);
                     return CreatedAtAction(nameof(GetById), new { id = order.Id }, order.ToResponse());
                 }
                 catch (DbUpdateConcurrencyException)
@@ -261,18 +265,25 @@ namespace CategoryProduct.API.Controllers
                 "The order could not be cancelled because it changed. Please try again.");
         }
 
-        private IActionResult ToActionResult(CancelResult r) => r.Status switch
+        private async Task<IActionResult> ToActionResultAsync(CancelResult r)
         {
-            CancelStatus.Ok => Ok(r.Order!.ToResponse()),
-            CancelStatus.NotFound => NotFound(),
-            _ => ConflictProblem(r.Detail!)
-        };
+            switch (r.Status)
+            {
+                case CancelStatus.Ok:
+                    await _notifications.OrderStatusChangedAsync(r.Order!);
+                    return Ok(r.Order!.ToResponse());
+                case CancelStatus.NotFound:
+                    return NotFound();
+                default:
+                    return ConflictProblem(r.Detail!);
+            }
+        }
 
         [HttpPost("{id:int}/cancel")]
         public async Task<IActionResult> Cancel(int id)
         {
             if (CurrentUserId() is not int callerId) return Unauthorized();
-            return ToActionResult(await CancelCoreAsync(id, callerId, User.IsInRole("Admin")));
+            return await ToActionResultAsync(await CancelCoreAsync(id, callerId, User.IsInRole("Admin")));
         }
 
         // ---------- Admin status ----------
@@ -289,7 +300,7 @@ namespace CategoryProduct.API.Controllers
             }
 
             if (target == OrderStatus.Cancelled)
-                return ToActionResult(await CancelCoreAsync(id, adminId, true));
+                return await ToActionResultAsync(await CancelCoreAsync(id, adminId, true));
 
             for (var attempt = 1; attempt <= MaxAttempts; attempt++)
             {
@@ -308,6 +319,7 @@ namespace CategoryProduct.API.Controllers
                 try
                 {
                     await _context.SaveChangesAsync();
+                    await _notifications.OrderStatusChangedAsync(order);
                     return Ok(order.ToResponse());
                 }
                 catch (DbUpdateConcurrencyException)

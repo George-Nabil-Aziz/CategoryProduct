@@ -20,7 +20,12 @@ namespace CategoryProduct.MVC.Models
         [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
         [Display(Name = "Confirm password")]
         public string ConfirmPassword { get; set; } = string.Empty;
+
+        [EmailAddress]
+        [StringLength(254)]
+        [Display(Name = "Email (optional)")]
+        public string? Email { get; set; }
     }
 
-    public record UserItem(int Id, string UserName, string Role);
+    public record UserItem(int Id, string UserName, string Role, string? Email = null);
 }

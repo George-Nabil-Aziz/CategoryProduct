@@ -1,4 +1,4 @@
 namespace CategoryProduct.API.Dtos
 {
-    public record UserResponseDto(int Id, string UserName, string Role);
+    public record UserResponseDto(int Id, string UserName, string Role, string? Email = null);
 }

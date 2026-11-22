@@ -1,6 +1,8 @@
 using CategoryProduct.API.Data;
 using CategoryProduct.API.Services;
 using CategoryProduct.API.Dtos;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -28,22 +30,79 @@ namespace CategoryProduct.API.Controllers
         [EnableRateLimiting("register")]
         public async Task<IActionResult> Register(RegisterRequestDto request)
         {
+            if (!EmailAddressRules.TryNormalize(request.Email, out var email, out var emailError))
+                return EmailInvalid(emailError!);
+
             var userName = request.UserName.Trim();
             var lower = userName.ToLower();
             if (await _context.Users.AnyAsync(u => u.UserName.ToLower() == lower))
                 return Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Username already taken." });
+            if (email != null && await _context.Users.AnyAsync(u => u.Email == email))
+                return EmailInUse();
 
-            var user = new Models.User { UserName = userName, PasswordHash = "", Role = "User" };
+            var user = new Models.User { UserName = userName, PasswordHash = "", Role = "User", Email = email };
             user.PasswordHash = new PasswordHasher<Models.User>().HashPassword(user, request.Password);
             _context.Users.Add(user);
             try { await _context.SaveChangesAsync(); }
             catch (DbUpdateException)
             {
+                _context.ChangeTracker.Clear();
+                if (email != null && await _context.Users.AnyAsync(u => u.Email == email))
+                    return EmailInUse();
                 return Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Username already taken." });
             }
 
-            return StatusCode(StatusCodes.Status201Created, new UserResponseDto(user.Id, user.UserName, user.Role));
+            return StatusCode(StatusCodes.Status201Created, new UserResponseDto(user.Id, user.UserName, user.Role, user.Email));
         }
+
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> Me()
+        {
+            if (CurrentUserId() is not int id) return Unauthorized();
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return Unauthorized();
+            return Ok(new ProfileResponseDto(user.Id, user.UserName, user.Role, user.Email));
+        }
+
+        [HttpPut("email")]
+        [Authorize]
+        [EnableRateLimiting("profile")]
+        public async Task<IActionResult> UpdateEmail(UpdateEmailRequestDto request)
+        {
+            if (CurrentUserId() is not int id) return Unauthorized();
+            if (!EmailAddressRules.TryNormalize(request.Email, out var email, out var emailError))
+                return EmailInvalid(emailError!);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return Unauthorized();
+
+            if (email != null && await _context.Users.AnyAsync(u => u.Email == email && u.Id != id))
+                return EmailInUse();
+
+            user.Email = email;
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateException)
+            {
+                _context.ChangeTracker.Clear();
+                if (email != null && await _context.Users.AnyAsync(u => u.Email == email && u.Id != id))
+                    return EmailInUse();
+                throw;
+            }
+            return Ok(new ProfileResponseDto(user.Id, user.UserName, user.Role, user.Email));
+        }
+
+        private int? CurrentUserId() =>
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+
+        private ActionResult EmailInvalid(string message)
+        {
+            ModelState.AddModelError("Email", message);
+            return ValidationProblem(ModelState);
+        }
+
+        private ActionResult EmailInUse() =>
+            Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Email already in use." });
 
         [HttpPost("login")]
         [EnableRateLimiting("login")]

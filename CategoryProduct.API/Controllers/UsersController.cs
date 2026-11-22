@@ -34,7 +34,7 @@ namespace CategoryProduct.API.Controllers
             var total = await query.CountAsync();
             var items = await query.OrderBy(u => u.UserName)
                 .Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(u => new UserResponseDto(u.Id, u.UserName, u.Role))
+                .Select(u => new UserResponseDto(u.Id, u.UserName, u.Role, u.Email))
                 .ToListAsync();
             var totalPages = (int)Math.Ceiling(total / (double)pageSize);
             return new PagedResponseDto<UserResponseDto>(items, page, pageSize, total, totalPages);
@@ -80,7 +80,7 @@ namespace CategoryProduct.API.Controllers
 
             user.Role = role;
             await _context.SaveChangesAsync();
-            return Ok(new UserResponseDto(user.Id, user.UserName, user.Role));
+            return Ok(new UserResponseDto(user.Id, user.UserName, user.Role, user.Email));
         }
 
         private static bool IsDeadlock(Exception? ex)

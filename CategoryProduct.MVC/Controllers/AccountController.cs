@@ -3,6 +3,7 @@ using CategoryProduct.MVC.Models;
 using CategoryProduct.MVC.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategoryProduct.MVC.Controllers
@@ -63,18 +64,20 @@ namespace CategoryProduct.MVC.Controllers
         {
             if (!ModelState.IsValid) return View(model);
 
-            var result = await _api.RegisterAsync(model.UserName, model.Password);
+            var result = await _api.RegisterAsync(model.UserName, model.Password, model.Email);
             if (!result.Success)
             {
                 if (result.TooManyRequests)
                     ModelState.AddModelError(string.Empty, "Too many attempts. Try again in a minute.");
+                else if (result.Conflict == "Email already in use.")
+                    ModelState.AddModelError(nameof(model.Email), "Email already in use.");
                 else if (result.Conflict != null)
                     ModelState.AddModelError(nameof(model.UserName), "Username already taken.");
                 else if (result.Errors.Count > 0)
                     foreach (var (field, messages) in result.Errors)
                         foreach (var m in messages)
                             ModelState.AddModelError(
-                                field is "UserName" or "Password" ? field : string.Empty, m);
+                                field is "UserName" or "Password" or "Email" ? field : string.Empty, m);
                 else
                     ModelState.AddModelError(string.Empty, "Registration failed. Please try again.");
                 return View(model);
@@ -86,6 +89,57 @@ namespace CategoryProduct.MVC.Controllers
 
             await SignInAsync(model.UserName, login);
             return RedirectToAction("Index", "Categories");
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Profile()
+        {
+            var me = await _api.GetMeAsync();
+            if (me.Unauthorized) return await SessionExpiredAsync();
+            if (me.TooManyRequests)
+                throw new HttpRequestException("Too many requests.", null, System.Net.HttpStatusCode.TooManyRequests);
+            if (!me.Success) throw new HttpRequestException("Could not load the profile.");
+
+            ViewData["ProfileUserName"] = me.Value!.UserName;
+            ViewData["ProfileRole"] = me.Value.Role;
+            return View(new ProfileViewModel { Email = me.Value.Email });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Profile(ProfileViewModel model)
+        {
+            ViewData["ProfileUserName"] = User.Identity?.Name;
+            ViewData["ProfileRole"] = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _api.SetEmailAsync(model.Email);
+            if (result.Unauthorized) return await SessionExpiredAsync();
+            if (result.Success)
+            {
+                TempData["Success"] = result.Value?.Email == null ? "Email removed." : "Email saved.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            if (result.TooManyRequests)
+                ModelState.AddModelError(string.Empty, ApiRateLimit.Message);
+            else if (result.Conflict != null)
+                ModelState.AddModelError(nameof(model.Email), result.Conflict);
+            else if (result.Errors.Count > 0)
+                foreach (var (field, messages) in result.Errors)
+                    foreach (var m in messages)
+                        ModelState.AddModelError(field == "Email" ? field : string.Empty, m);
+            else
+                ModelState.AddModelError(string.Empty, "Could not save the email. Please try again.");
+            return View(model);
+        }
+
+        private async Task<IActionResult> SessionExpiredAsync()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction(nameof(Login), new { returnUrl = Url.Action(nameof(Profile)) });
         }
 
         [HttpGet]

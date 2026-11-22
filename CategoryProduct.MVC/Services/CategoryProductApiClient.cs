@@ -50,8 +50,17 @@ namespace CategoryProduct.MVC.Services
             catch (Exception) { }
         }
 
-        public Task<ApiResult> RegisterAsync(string userName, string password) =>
-            SendAsync(HttpMethod.Post, "api/account/register", new { userName, password });
+        public Task<ApiResult> RegisterAsync(string userName, string password, string? email = null) =>
+            SendAsync(HttpMethod.Post, "api/account/register",
+                string.IsNullOrWhiteSpace(email)
+                    ? new { userName, password, email = (string?)null }
+                    : new { userName, password, email = (string?)email.Trim() });
+
+        public Task<ApiResult<ProfileItem>> GetMeAsync() => GetAsync<ProfileItem>("api/account/me");
+
+        public Task<ApiResult<ProfileItem>> SetEmailAsync(string? email) =>
+            SendAsync<ProfileItem>(HttpMethod.Put, "api/account/email",
+                new { email = string.IsNullOrWhiteSpace(email) ? null : email.Trim() });
 
         public Task<ApiResult<PagedResult<UserItem>>> GetUsersAsync(int page, int pageSize = 10, string? search = null) =>
             GetAsync<PagedResult<UserItem>>(

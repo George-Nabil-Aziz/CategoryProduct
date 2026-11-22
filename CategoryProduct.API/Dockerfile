@@ -11,6 +11,7 @@ ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 RUN mkdir -p /app/logs && chown -R $APP_UID /app/logs
 RUN mkdir -p /data/product-images && chown $APP_UID /data/product-images
+RUN mkdir -p /data/email-outbox && chown $APP_UID /data/email-outbox
 COPY --from=build --chown=$APP_UID /app/publish .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "CategoryProduct.API.dll"]

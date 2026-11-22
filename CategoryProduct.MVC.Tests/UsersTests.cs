@@ -31,6 +31,30 @@ public class UsersTests : MvcTestBase
     }
 
     [Fact]
+    public async Task Index_shows_an_email_column_with_values_and_empty_cells()
+    {
+        await SignInAdminAsync();
+        Fake.On(HttpMethod.Get, "api/users", FakeResponse.Json(200, ApiJson.Paged(new[]
+        {
+            ApiJson.User(1, "alice", "User", "alice@example.com"),
+            ApiJson.User(2, "root", "Admin")
+        })));
+
+        var html = await GetHtmlAsync("/Users");
+
+        var headers = System.Text.RegularExpressions.Regex.Matches(html, "<th>(.*?)</th>")
+            .Select(m => m.Groups[1].Value).ToList();
+        Assert.Equal(new[] { "User name", "Email", "Role" }, headers);
+        var rows = System.Text.RegularExpressions.Regex.Matches(html, "<tr>\\s*<td>(.*?)</td>\\s*<td>(.*?)</td>",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("alice", rows[0].Groups[1].Value);
+        Assert.Equal("alice@example.com", rows[0].Groups[2].Value.Trim());
+        Assert.Equal("root", rows[1].Groups[1].Value);
+        Assert.Equal("", rows[1].Groups[2].Value.Trim());
+    }
+
+    [Fact]
     public async Task Index_search_and_page_reach_api_and_paging_links_keep_search()
     {
         await SignInAdminAsync();

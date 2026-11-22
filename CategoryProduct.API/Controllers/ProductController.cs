@@ -21,17 +21,20 @@ namespace CategoryProduct.API.Controllers
         private readonly ProductImageOptions _imageOptions;
         private readonly ILogger<ProductController> _logger;
         private readonly InventoryService _inventory;
+        private readonly NotificationService _notifications;
         private readonly int _threshold;
 
         public ProductController(ApplicationDbContext context, IProductImageStorage storage,
             IOptions<ProductImageOptions> imageOptions, ILogger<ProductController> logger,
-            InventoryService inventory, IOptions<InventoryOptions> inventoryOptions)
+            InventoryService inventory, IOptions<InventoryOptions> inventoryOptions,
+            NotificationService notifications)
         {
             _context = context;
             _storage = storage;
             _imageOptions = imageOptions.Value;
             _logger = logger;
             _inventory = inventory;
+            _notifications = notifications;
             _threshold = inventoryOptions.Value.Effective;
         }
 
@@ -168,6 +171,7 @@ namespace CategoryProduct.API.Controllers
             }
 
             var m = result.Movement!;
+            await _notifications.LowStockAsync(new[] { m });
             return StatusCode(201, new StockMovementResponseDto(m.Id, m.ProductId, m.QuantityChange, m.QuantityAfter,
                 m.Reason.ToString(), m.Note, m.UserId, User.FindFirstValue(ClaimTypes.Name), m.CreatedAtUtc));
         }

@@ -29,8 +29,18 @@ services:
       Inventory__LowStockThreshold: ${LOW_STOCK_THRESHOLD:-5}
       Bootstrap__AdminUserName: ${BOOTSTRAP_ADMIN_USERNAME:-}
       Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__Provider: ${EMAIL_PROVIDER:-Pickup}
+      Email__From: ${EMAIL_FROM:-noreply@categoryproduct.local}
+      Email__PickupDirectory: /data/email-outbox
+      Email__Smtp__Host: ${EMAIL_SMTP_HOST:-}
+      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-587}
+      Email__Smtp__UserName: ${EMAIL_SMTP_USERNAME:-}
+      Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}
+      Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLESSL:-true}
     volumes:
       - productimages:/data/product-images
+      - emailoutbox:/data/email-outbox
     ports:
       - "${API_HOST_PORT:-5028}:8080"
 
@@ -54,4 +64,5 @@ services:
 volumes:
   sqldata:
   productimages:
+  emailoutbox:
   mvckeys:

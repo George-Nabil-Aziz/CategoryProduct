@@ -10,5 +10,7 @@ namespace CategoryProduct.API.Dtos
 
         [Required(AllowEmptyStrings = false)]
         [MinLength(8)]
-        string Password);
+        string Password,
+
+        string? Email = null);
 }

@@ -82,7 +82,11 @@ public static class ApiJson
         return new { id, userId, userName, status, total, itemCount, createdAtUtc = now, updatedAtUtc = now };
     }
 
-    public static object User(int id, string userName, string role = "User") => new { id, userName, role };
+    public static object User(int id, string userName, string role = "User", string? email = null) =>
+        new { id, userName, role, email };
+
+    public static object Profile(int id, string userName, string role = "User", string? email = null) =>
+        new { id, userName, role, email };
 
     /// <summary>400 problem body: <c>errors = { field: [messages] }</c>. Several calls' worth via the dictionary overload.</summary>
     public static object ValidationProblem(string field, params string[] messages) =>

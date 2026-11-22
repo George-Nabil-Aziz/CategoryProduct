@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using CategoryProduct.API.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CategoryProduct.API.Tests
 {
@@ -21,12 +23,21 @@ namespace CategoryProduct.API.Tests
         public string ImageStoragePath { get; } =
             Path.Combine(Path.GetTempPath(), "cp-images-" + Guid.NewGuid().ToString("N"));
 
+        public string EmailPickupPath { get; } =
+            Path.Combine(Path.GetTempPath(), "cp-email-" + Guid.NewGuid().ToString("N"));
+
+        public RecordingEmailSender Emails { get; } = new();
+
+        public EmailQueue EmailQueue => Services.GetRequiredService<EmailQueue>();
+
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
             if (disposing)
             {
                 try { if (Directory.Exists(ImageStoragePath)) Directory.Delete(ImageStoragePath, true); }
+                catch (IOException) { }
+                try { if (Directory.Exists(EmailPickupPath)) Directory.Delete(EmailPickupPath, true); }
                 catch (IOException) { }
             }
         }
@@ -51,6 +62,9 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
             builder.UseSetting("RateLimiting:RefreshPermitLimit", RefreshPermitLimit.ToString());
             builder.UseSetting("RateLimiting:LogoutPermitLimit", LogoutPermitLimit.ToString());
+            builder.UseSetting("RateLimiting:ProfilePermitLimit", "1000");
+            builder.UseSetting("Email:Enabled", "true");
+            builder.UseSetting("Email:PickupDirectory", EmailPickupPath);
 
             builder.ConfigureServices(services =>
             {
@@ -65,6 +79,9 @@ namespace CategoryProduct.API.Tests
                     services.Remove(d);
 
                 services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(DbName, DbRoot));
+
+                services.RemoveAll<IEmailSender>();
+                services.AddSingleton<IEmailSender>(Emails);
 
                 using var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();

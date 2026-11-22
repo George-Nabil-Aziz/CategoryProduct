@@ -57,6 +57,7 @@
                         {
                             <li class="nav-item d-flex align-items-center">
                                 <span class="navbar-text me-2">Hello, @User.Identity.Name</span>
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Profile">Profile</a>
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
                                 </form>

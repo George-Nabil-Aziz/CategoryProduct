@@ -2,6 +2,7 @@ using Serilog;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text;
 using CategoryProduct.API.Data;
+using CategoryProduct.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -74,6 +75,7 @@ var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitL
 var registerPermitLimit = builder.Configuration.GetValue("RateLimiting:RegisterPermitLimit", 5);
 var logoutPermitLimit = builder.Configuration.GetValue("RateLimiting:LogoutPermitLimit", 30);
 var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPermitLimit", 30);
+var profilePermitLimit = builder.Configuration.GetValue("RateLimiting:ProfilePermitLimit", 30);
 builder.Services.Configure<CategoryProduct.API.Services.ProductImageOptions>(
     builder.Configuration.GetSection(CategoryProduct.API.Services.ProductImageOptions.SectionName));
 builder.Services.AddSingleton<CategoryProduct.API.Services.IProductImageStorage, CategoryProduct.API.Services.ProductImageStorage>();
@@ -83,6 +85,8 @@ builder.Services.AddScoped<CategoryProduct.API.Services.InventoryService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.TokenService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.RefreshTokenCleanupService>();
 builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenCleanupWorker>();
+builder.Services.AddEmailNotifications(builder.Configuration);
+builder.Services.AddScoped<CategoryProduct.API.Services.NotificationService>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -110,6 +114,15 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = refreshPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("profile", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = profilePermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));

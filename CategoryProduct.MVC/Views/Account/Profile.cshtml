@@ -1,0 +1,40 @@
+@model CategoryProduct.MVC.Models.ProfileViewModel
+
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<h1>Profile</h1>
+<hr />
+
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
+<div class="row">
+    <div class="col-md-4">
+        <dl>
+            <dt>User name</dt>
+            <dd id="profile-username">@ViewData["ProfileUserName"]</dd>
+            <dt>Role</dt>
+            <dd id="profile-role">@ViewData["ProfileRole"]</dd>
+        </dl>
+
+        <form asp-action="Profile" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Email" class="control-label"></label>
+                <input asp-for="Email" type="email" class="form-control" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+                <div class="form-text">Used for order and stock notifications. Leave empty to remove it.</div>
+            </div>
+
+            <div class="form-group mt-2">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

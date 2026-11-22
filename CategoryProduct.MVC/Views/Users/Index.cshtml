@@ -15,12 +15,13 @@
 </form>
 
 <table class="table">
-	<thead><tr><th>User name</th><th>Role</th></tr></thead>
+	<thead><tr><th>User name</th><th>Email</th><th>Role</th></tr></thead>
 	<tbody>
 		@foreach (var item in Model)
 		{
 			<tr>
 				<td>@item.UserName</td>
+				<td>@item.Email</td>
 				<td>
 					<form asp-action="ChangeRole" method="post" class="d-flex gap-2">
 						<input type="hidden" name="id" value="@item.Id" />
