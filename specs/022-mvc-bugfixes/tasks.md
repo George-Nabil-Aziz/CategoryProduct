@@ -118,7 +118,7 @@ description: "Task list for 022-mvc-bugfixes"
 - [X] T028 Run `dotnet test CategoryProduct.slnx` (all green; test count greater than the T001 baseline). Run the MVC project twice to catch order or flake issues.
 - [X] T029 `git status` review: only files from the "Source changes" list of `plan.md` changed or were created; no `.env`, no `logs/` folder, no temp files, no change under `CategoryProduct.API`, `docker-compose.yml` or `.github`. Confirm `CategoryProduct.MVC/Program.cs` is untouched.
 - [X] T030 Complete `specs/022-mvc-bugfixes/spec.md` Known Gaps with the final facts (actual test counts, any deviation found while implementing, e.g. the xunit fixture fallback of research R7) and tick the checklist `checklists/requirements.md` notes if anything changed.
-- [ ] T031 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` and `compose-smoke` are green and record the run in Known Gaps (same style as 021); `compose-smoke` loads `/` of the MVC, which still returns 200 (`Categories/Index`), so it is a regression check for the new controller's routing.
+- [X] T031 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` and `compose-smoke` are green and record the run in Known Gaps (same style as 021); `compose-smoke` loads `/` of the MVC, which still returns 200 (`Categories/Index`), so it is a regression check for the new controller's routing.
 
 ---
 
