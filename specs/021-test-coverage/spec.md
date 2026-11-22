@@ -192,6 +192,8 @@ The Known Gaps of specs 013, 014, 016, 017, 018, 019 and 020 mark the items cove
 
 ## Known Gaps
 
+- **CI verified**: runs for commits `ec741dc` and `d87c2e3` passed all four jobs (`build-test`, `docker-build`, `sqlserver-tests`, `compose-smoke`) on 2026-11-22. A rare InMemory-only race flake (`ParallelCancels_RestoreOnce`) was found by looping the suite and replaced by a deterministic test plus a real-thread SQL Server test.
+
 - **No real browser or JavaScript**: only server-rendered HTML is tested. Client-side validation (`_ValidationScriptsPartial`), Bootstrap behavior, the `javascript:location.reload()` Retry link and file-picker UX are not covered. Tests post what a browser would post.
 - **Compose smoke is verified only by its first CI run**: this machine has no Docker, and the `compose-smoke` job has not run on GitHub yet. Treat it as unverified until `build-test`, `docker-build`, `sqlserver-tests` and `compose-smoke` are all green on GitHub; record the run here afterwards (task T045).
 - **Final local facts**: `dotnet test CategoryProduct.slnx` runs 490 tests, all passing (278 in `CategoryProduct.MVC.Tests`, 212 in `CategoryProduct.API.Tests`), green on two consecutive runs. `MapStaticAssets` needed no mitigation under the test host (research R4). A refresh request with an empty JSON body returns `400 Bad Request`. `Microsoft.Extensions.TimeProvider.Testing` is pinned to `10.11.1` in `CategoryProduct.API.Tests`.

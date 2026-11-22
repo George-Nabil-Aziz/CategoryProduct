@@ -121,7 +121,7 @@ G4 can start immediately in parallel with G1. G2 and G3 start together once G1's
   - `specs/020-hardening-followups/spec.md`: MVC Data Protection no test -> COVERED partially (MvcFactory sets `DataProtection:KeysPath`, so the branch executes; key persistence across restarts and Docker run are covered only by compose-smoke start-up); "MVC pages / TokenRefreshHandler after a lost race not verified in a browser" -> handler logic covered by unit tests, browser still open; `RefreshTokenCleanupWorker` mention if present.
 - [X] T043 [US7] Update `specs/021-test-coverage/spec.md` Known Gaps with the final facts: actual test count, whether `MapStaticAssets` needed a mitigation (research R4), the real status for the empty refresh body, and (after the first push) the CI run result for all four jobs.
 - [X] T044 Run the full local check: `dotnet build CategoryProduct.slnx`, `dotnet test CategoryProduct.slnx` (both test projects green, no Docker/SQL needed), `git status` shows no `.env`, no `logs/` under the test project, no temp files.
-- [ ] T045 After pushing, confirm `build-test`, `docker-build`, `sqlserver-tests`, `compose-smoke` green; if `compose-smoke` needs tuning (grep patterns, timeouts, JSON spacing) adjust `ci.yml` and `contracts/ci-compose-smoke.md` together and record it.
+- [X] T045 After pushing, confirm `build-test`, `docker-build`, `sqlserver-tests`, `compose-smoke` green; if `compose-smoke` needs tuning (grep patterns, timeouts, JSON spacing) adjust `ci.yml` and `contracts/ci-compose-smoke.md` together and record it.
 
 ---
 
