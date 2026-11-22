@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using System.Security.Claims;
 using CategoryProduct.API.Infrastructure;
 using CategoryProduct.API.Services;
 
@@ -19,14 +20,19 @@ namespace CategoryProduct.API.Controllers
         private readonly IProductImageStorage _storage;
         private readonly ProductImageOptions _imageOptions;
         private readonly ILogger<ProductController> _logger;
+        private readonly InventoryService _inventory;
+        private readonly int _threshold;
 
         public ProductController(ApplicationDbContext context, IProductImageStorage storage,
-            IOptions<ProductImageOptions> imageOptions, ILogger<ProductController> logger)
+            IOptions<ProductImageOptions> imageOptions, ILogger<ProductController> logger,
+            InventoryService inventory, IOptions<InventoryOptions> inventoryOptions)
         {
             _context = context;
             _storage = storage;
             _imageOptions = imageOptions.Value;
             _logger = logger;
+            _inventory = inventory;
+            _threshold = inventoryOptions.Value.Effective;
         }
 
         [HttpGet]
@@ -70,7 +76,7 @@ namespace CategoryProduct.API.Controllers
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-            var products = entities.Select(p => p.ToResponse(Url)).ToList();
+            var products = entities.Select(p => p.ToResponse(Url, _threshold)).ToList();
 
             return Ok(new PagedResponseDto<ProductResponseDto>(
                 products, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
@@ -84,7 +90,86 @@ namespace CategoryProduct.API.Controllers
             if (product == null)
                 return NotFound();
 
-            return Ok(product.ToResponse(Url));
+            return Ok(product.ToResponse(Url, _threshold));
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("low-stock")]
+        public async Task<IActionResult> GetLowStock(int page = 1, int pageSize = 10)
+        {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var query = _context.Products.AsNoTracking().Where(p => p.Quantity < _threshold);
+            var totalCount = await query.CountAsync();
+            var entities = await query
+                .OrderBy(p => p.Quantity).ThenBy(p => p.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            var items = entities.Select(p => p.ToResponse(Url, _threshold)).ToList();
+
+            return Ok(new PagedResponseDto<ProductResponseDto>(
+                items, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("{id}/stock-movements")]
+        public async Task<IActionResult> GetStockMovements(int id, int page = 1, int pageSize = 10)
+        {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            if (!await _context.Products.AnyAsync(p => p.Id == id))
+                return NotFound();
+
+            var query = _context.StockMovements.AsNoTracking().Where(m => m.ProductId == id);
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(m => m.CreatedAtUtc).ThenByDescending(m => m.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(m => new StockMovementResponseDto(m.Id, m.ProductId, m.QuantityChange, m.QuantityAfter,
+                    m.Reason.ToString(), m.Note, m.UserId, m.User != null ? m.User.UserName : null, m.CreatedAtUtc))
+                .ToListAsync();
+
+            return Ok(new PagedResponseDto<StockMovementResponseDto>(
+                items, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/stock-movements")]
+        public async Task<IActionResult> PostStockMovement(int id, StockMovementRequestDto request)
+        {
+            if (request.QuantityChange == 0)
+                ModelState.AddModelError(nameof(request.QuantityChange), "Quantity change cannot be zero.");
+            if (!StockMovementReasonExtensions.TryParseName(request.Reason, out var reason)
+                || !StockMovementReasonExtensions.AdminReasons.Contains(reason))
+                ModelState.AddModelError(nameof(request.Reason),
+                    "Reason must be one of: " + string.Join(", ", StockMovementReasonExtensions.AdminReasons) + ".");
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            var result = await _inventory.ApplyMovementAsync(id, request.QuantityChange, reason, note, CurrentUserId());
+
+            switch (result.Status)
+            {
+                case MovementStatus.NotFound:
+                    return NotFound();
+                case MovementStatus.InsufficientStock:
+                    return Conflict(new ProblemDetails
+                    {
+                        Status = 409, Title = "Conflict",
+                        Detail = "The change would make the quantity negative or too large."
+                    });
+                case MovementStatus.Conflict:
+                    return ConcurrencyConflict();
+            }
+
+            var m = result.Movement!;
+            return StatusCode(201, new StockMovementResponseDto(m.Id, m.ProductId, m.QuantityChange, m.QuantityAfter,
+                m.Reason.ToString(), m.Note, m.UserId, User.FindFirstValue(ClaimTypes.Name), m.CreatedAtUtc));
         }
 
         [Authorize(Roles = "Admin")]
@@ -106,9 +191,21 @@ namespace CategoryProduct.API.Controllers
             };
 
             _context.Products.Add(product);
+            if (request.Quantity > 0)
+            {
+                _context.StockMovements.Add(new StockMovement
+                {
+                    Product = product,
+                    QuantityChange = request.Quantity,
+                    QuantityAfter = request.Quantity,
+                    Reason = StockMovementReason.Initial,
+                    UserId = CurrentUserId(),
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
             await _context.SaveChangesAsync();
 
-            return Ok(product.ToResponse(Url));
+            return Ok(product.ToResponse(Url, _threshold));
         }
 
         [Authorize(Roles = "Admin")]
@@ -126,14 +223,26 @@ namespace CategoryProduct.API.Controllers
             if (oldProduct == null)
                 return NotFound();
 
+            if (request.Quantity != oldProduct.Quantity)
+            {
+                ModelState.AddModelError(nameof(request.Quantity), "Use stock movements to change quantity.");
+                return ValidationProblem(ModelState);
+            }
+
             oldProduct.Name = request.Name;
             oldProduct.Price = request.Price;
-            oldProduct.Quantity = request.Quantity;
             oldProduct.CategoryId = request.CategoryId;
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return ConcurrencyConflict();
+            }
 
-            return Ok(oldProduct.ToResponse(Url));
+            return Ok(oldProduct.ToResponse(Url, _threshold));
         }
 
         [Authorize(Roles = "Admin")]
@@ -147,7 +256,14 @@ namespace CategoryProduct.API.Controllers
 
             var imageFileName = product.ImageFileName;
             _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return ConcurrencyConflict();
+            }
             _storage.Delete(imageFileName);
 
             return Ok();
@@ -204,7 +320,7 @@ namespace CategoryProduct.API.Controllers
             }
             _storage.Delete(oldFileName);
 
-            return Ok(product.ToResponse(Url));
+            return Ok(product.ToResponse(Url, _threshold));
         }
 
         [Authorize(Roles = "Admin")]
@@ -246,6 +362,16 @@ namespace CategoryProduct.API.Controllers
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             return PhysicalFile(path, contentType, null, new EntityTagHeaderValue($"\"{product.ImageFileName}\""));
         }
+
+        private int? CurrentUserId() =>
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+
+        private IActionResult ConcurrencyConflict() =>
+            Conflict(new ProblemDetails
+            {
+                Status = 409, Title = "Conflict",
+                Detail = "The product was changed by another request. Reload and try again."
+            });
 
         private IActionResult FileError(string message)
         {

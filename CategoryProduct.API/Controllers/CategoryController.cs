@@ -5,6 +5,8 @@ using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using CategoryProduct.API.Services;
 
 namespace CategoryProduct.API.Controllers
 {
@@ -14,9 +16,12 @@ namespace CategoryProduct.API.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public CategoryController(ApplicationDbContext context)
+        private readonly int _threshold;
+
+        public CategoryController(ApplicationDbContext context, IOptions<InventoryOptions> inventoryOptions)
         {
             _context = context;
+            _threshold = inventoryOptions.Value.Effective;
         }
 
         [HttpGet]
@@ -109,7 +114,7 @@ namespace CategoryProduct.API.Controllers
                 .Where(p => p.CategoryId == catId)
                 .ToListAsync();
 
-            return Ok(products.Select(p => p.ToResponse(Url)).ToList());
+            return Ok(products.Select(p => p.ToResponse(Url, _threshold)).ToList());
         }
     }
 }

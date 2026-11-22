@@ -125,6 +125,29 @@ namespace CategoryProduct.MVC.Services
 
         public Task<ApiResult> DeleteProductImageAsync(int id) => SendAsync(HttpMethod.Delete, $"api/product/{id}/image");
 
+        // ---------- Inventory (Admin) ----------
+        public async Task<PagedResult<StockMovementItem>?> GetStockMovementsAsync(int id, int page, int pageSize = 10)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/product/{id}/stock-movements?page={page}&pageSize={pageSize}");
+            ApplyBearerToken(request);
+            using var response = await _http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.NotFound) return null;
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<PagedResult<StockMovementItem>>();
+        }
+
+        public async Task<int> GetLowStockCountAsync()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "api/product/low-stock?page=1&pageSize=1");
+            ApplyBearerToken(request);
+            using var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<PagedResult<Product>>())!.TotalCount;
+        }
+
+        public Task<ApiResult> AddStockMovementAsync(int id, StockMovementRequest r) =>
+            SendAsync(HttpMethod.Post, $"api/product/{id}/stock-movements", r);
+
         // ---------- helpers ----------
         private async Task<T?> GetOrNullAsync<T>(string url) where T : class
         {

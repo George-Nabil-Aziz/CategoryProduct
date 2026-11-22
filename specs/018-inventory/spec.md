@@ -173,3 +173,7 @@ An Admin opens "Inventory" from the navigation bar and sees every product with i
 - Database cascade of movements on product delete, the `SetNull` foreign key and truly concurrent writes are SQL Server behaviors that EF InMemory does not reproduce; they are verified manually (quickstart), and concurrency is simulated with a `SaveChangesInterceptor` as in 015.
 - No backfill means pre-existing products show history only from their first movement on.
 - The warning log is not an alert delivery channel; it only helps operators reading the logs.
+- The 017 image endpoints (`POST`/`DELETE api/product/{id}/image`) also update `Product` but do not
+  catch `DbUpdateConcurrencyException`; if a stock change commits between their read and save they
+  return `500` instead of `409` (rare; found in Review).
+- The MVC Inventory pages were not run in a browser.

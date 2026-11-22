@@ -77,6 +77,9 @@ var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPer
 builder.Services.Configure<CategoryProduct.API.Services.ProductImageOptions>(
     builder.Configuration.GetSection(CategoryProduct.API.Services.ProductImageOptions.SectionName));
 builder.Services.AddSingleton<CategoryProduct.API.Services.IProductImageStorage, CategoryProduct.API.Services.ProductImageStorage>();
+builder.Services.Configure<CategoryProduct.API.Services.InventoryOptions>(
+    builder.Configuration.GetSection(CategoryProduct.API.Services.InventoryOptions.SectionName));
+builder.Services.AddScoped<CategoryProduct.API.Services.InventoryService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.TokenService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.RefreshTokenCleanupService>();
 builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenCleanupWorker>();

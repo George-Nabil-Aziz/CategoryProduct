@@ -14,6 +14,7 @@ namespace CategoryProduct.API.Data
         public DbSet<User> Users { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,6 +28,16 @@ namespace CategoryProduct.API.Data
             });
 
             modelBuilder.Entity<Product>().Property(p => p.ImageFileName).HasMaxLength(100);
+            modelBuilder.Entity<Product>().Property(p => p.ConcurrencyStamp).IsConcurrencyToken();
+
+            modelBuilder.Entity<StockMovement>(b =>
+            {
+                b.Property(m => m.Reason).HasConversion<string>().HasMaxLength(30).IsRequired();
+                b.Property(m => m.Note).HasMaxLength(200);
+                b.HasOne(m => m.Product).WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.SetNull);
+                b.HasIndex(m => new { m.ProductId, m.CreatedAtUtc });
+            });
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.UserName)

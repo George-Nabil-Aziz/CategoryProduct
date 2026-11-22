@@ -33,6 +33,7 @@ namespace CategoryProduct.API.Tests
 
         protected virtual int LoginPermitLimit => 1000;
         protected virtual int LogoutPermitLimit => 1000;
+        protected virtual int LowStockThreshold => 5;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -41,6 +42,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("Jwt:Issuer", "CategoryProduct.API");
             builder.UseSetting("Jwt:Audience", "CategoryProduct.Client");
             builder.UseSetting("ConnectionStrings:DefaultConnection", "unused");
+            builder.UseSetting("Inventory:LowStockThreshold", LowStockThreshold.ToString());
             builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
             builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
             builder.UseSetting("RateLimiting:RefreshPermitLimit", "1000");

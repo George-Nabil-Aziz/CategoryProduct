@@ -9,6 +9,7 @@
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
         public string? ImageFileName { get; set; }
+        public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
 
     }
 }

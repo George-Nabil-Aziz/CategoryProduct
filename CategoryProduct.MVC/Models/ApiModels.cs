@@ -6,6 +6,10 @@ namespace CategoryProduct.MVC.Models
 
     public record ProductRequest(string Name, decimal Price, int Quantity, int CategoryId);
 
+    public record StockMovementItem(int Id, int ProductId, int QuantityChange, int QuantityAfter, string Reason, string? Note, int? UserId, string? UserName, DateTime CreatedAtUtc);
+
+    public record StockMovementRequest(int QuantityChange, string Reason, string? Note);
+
     /// <summary>Outcome of a write call (POST/PUT/DELETE).</summary>
     public class ApiResult
     {

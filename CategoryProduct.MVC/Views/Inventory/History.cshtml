@@ -1,0 +1,68 @@
+@model IEnumerable<CategoryProduct.MVC.Models.StockMovementItem>
+
+@{
+	var product = (CategoryProduct.MVC.Models.Product)ViewBag.Product;
+	ViewData["Title"] = "Stock history";
+}
+
+<h1>Stock history: @product.Name</h1>
+<p>
+	Quantity: <strong>@product.Quantity</strong>
+	@if (product.IsLowStock) { <span class="badge bg-warning text-dark ms-1">Low stock</span> }
+	<a asp-action="Index" class="ms-3">Back to inventory</a>
+</p>
+
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+
+<form asp-action="AddMovement" asp-route-id="@product.Id" method="post" class="row g-2 mb-4">
+	<input type="hidden" name="page" value="1" />
+	<div class="col-auto">
+		<label class="form-label" for="reason">Reason</label>
+		<select id="reason" name="reason" class="form-select">
+			<option>Restock</option>
+			<option>Adjustment</option>
+			<option>Damage</option>
+			<option>Return</option>
+		</select>
+	</div>
+	<div class="col-auto">
+		<label class="form-label" for="quantityChange">Quantity change (+/-)</label>
+		<input id="quantityChange" name="quantityChange" type="number" class="form-control" required />
+	</div>
+	<div class="col-auto">
+		<label class="form-label" for="note">Note</label>
+		<input id="note" name="note" maxlength="200" class="form-control" />
+	</div>
+	<div class="col-auto align-self-end"><button class="btn btn-primary">Add movement</button></div>
+</form>
+
+<table class="table">
+	<thead><tr><th>Time</th><th>Change</th><th>Quantity after</th><th>Reason</th><th>Note</th><th>User</th></tr></thead>
+	<tbody>
+		@foreach (var m in Model)
+		{
+			<tr>
+				<td>@m.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+				<td>@(m.QuantityChange > 0 ? "+" : "")@m.QuantityChange</td>
+				<td>@m.QuantityAfter</td>
+				<td>@m.Reason</td>
+				<td>@(string.IsNullOrEmpty(m.Note) ? "-" : m.Note)</td>
+				<td>@(string.IsNullOrEmpty(m.UserName) ? "-" : m.UserName)</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<nav>
+	<ul class="pagination">
+		@if (ViewBag.CurrentPage > 1)
+		{
+			<li class="page-item"><a class="page-link" asp-action="History" asp-route-id="@product.Id" asp-route-page="@(ViewBag.CurrentPage - 1)">Previous</a></li>
+		}
+		@if (ViewBag.CurrentPage < ViewBag.TotalPages)
+		{
+			<li class="page-item"><a class="page-link" asp-action="History" asp-route-id="@product.Id" asp-route-page="@(ViewBag.CurrentPage + 1)">Next</a></li>
+		}
+	</ul>
+</nav>

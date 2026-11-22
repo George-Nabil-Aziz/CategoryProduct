@@ -26,6 +26,7 @@ services:
       Database__MigrateOnStartup: "true"
       Hosting__UseHttpsRedirection: "false"
       ProductImages__StoragePath: /data/product-images
+      Inventory__LowStockThreshold: ${LOW_STOCK_THRESHOLD:-5}
     volumes:
       - productimages:/data/product-images
     ports:

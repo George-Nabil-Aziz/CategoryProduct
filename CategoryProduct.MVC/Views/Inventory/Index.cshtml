@@ -1,0 +1,41 @@
+@model IEnumerable<CategoryProduct.MVC.Models.Product>
+
+@{
+	ViewData["Title"] = "Inventory";
+}
+
+<h1>Inventory</h1>
+
+@if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (ViewBag.LowStockCount is int low && low > 0)
+{
+	<div class="alert alert-warning">@low product(s) low on stock</div>
+}
+
+<table class="table">
+	<thead><tr><th>Name</th><th>Quantity</th><th></th></tr></thead>
+	<tbody>
+		@foreach (var item in Model)
+		{
+			<tr>
+				<td>@item.Name</td>
+				<td>@item.Quantity @if (item.IsLowStock) { <span class="badge bg-warning text-dark ms-1">Low stock</span> }</td>
+				<td><a asp-action="History" asp-route-id="@item.Id">History</a></td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<nav>
+	<ul class="pagination">
+		@if (ViewBag.CurrentPage > 1)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)">Previous</a></li>
+		}
+		@if (ViewBag.CurrentPage < ViewBag.TotalPages)
+		{
+			<li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)">Next</a></li>
+		}
+	</ul>
+</nav>

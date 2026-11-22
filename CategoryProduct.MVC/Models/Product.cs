@@ -23,5 +23,7 @@ namespace CategoryProduct.MVC.Models
 
         // Absolute API image URL; used only as a has-image flag. Pages always use the MVC Products/Image/{id} proxy.
         public string? ImageUrl { get; set; }
+
+        public bool IsLowStock { get; set; }
     }
 }
