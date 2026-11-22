@@ -6,13 +6,15 @@
 
 **Status**: Implemented (commits `b17b5ee`, `3149197`)
 
-**Input**: Retroactive spec. Product CategoryId validation, JWT signing key moved out of tracked config, pagination metadata on list endpoints, and async API controllers.
+**Input**: Retroactive spec. Product `CategoryId` validation, JWT signing key moved out of tracked config, pagination metadata on list endpoints, and async API controllers.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reject products that point at a missing category (Priority: P1)
 
 An authenticated consumer who creates or updates a Product with a `CategoryId` that does not exist gets a clear validation error instead of a database failure.
+
+**Why this priority**: Without the check, a bad `CategoryId` surfaces as an unhandled foreign-key failure on save.
 
 **Independent Test**: POST/PUT a product with a non-existent `CategoryId` and confirm a 400 response and no data change.
 
@@ -28,6 +30,8 @@ An authenticated consumer who creates or updates a Product with a `CategoryId` t
 
 The API refuses to start unless a strong JWT signing key is supplied from user-secrets (development) or the `Jwt__Key` environment variable.
 
+**Why this priority**: Constitution Principle IV (NON-NEGOTIABLE): no secret in tracked configuration.
+
 **Independent Test**: Start the API with no key configured and confirm startup fails with a message explaining how to set it.
 
 **Acceptance Scenarios**:
@@ -41,17 +45,26 @@ The API refuses to start unless a strong JWT signing key is supplied from user-s
 
 Category and Product list endpoints return a page of items plus paging metadata so clients can build pagers.
 
+**Why this priority**: Constitution Principle I requires paginated list endpoints; clients need totals to render a pager.
+
+**Independent Test**: Call `GET /api/Category?page=1&pageSize=100` and confirm `pageSize` is 50 and `totalCount` matches the number of categories.
+
 **Acceptance Scenarios**:
 
 1. **Given** N items, **When** `GET` list is called with `page` and `pageSize`, **Then** the response is `PagedResponseDto<T>`: `items`, `page`, `pageSize`, `totalCount`, `totalPages`.
 2. **Given** `pageSize` above 50 or below 1, **Then** it is clamped to 1..50; `page` below 1 becomes 1.
 3. **Given** any page, **Then** items are ordered by `Id` so paging is stable.
+4. **Given** no `page`/`pageSize` query values, **Then** the defaults are `page = 1` and `pageSize = 5`.
 
 ---
 
 ### User Story 4 - Async data access (Priority: P3)
 
 All API controller actions use async EF Core calls so requests do not block threads. No observable behavior change.
+
+**Why this priority**: Internal quality change; no consumer-visible effect.
+
+**Independent Test**: Run the integration tests from 005 and confirm they still pass.
 
 **Acceptance Scenarios**:
 
@@ -62,6 +75,8 @@ All API controller actions use async EF Core calls so requests do not block thre
 - `page` beyond the last page returns an empty `items` list with correct `totalCount`/`totalPages`.
 - Empty table returns `totalCount = 0`, `totalPages = 0`.
 - A key of 32+ characters is accepted; no other strength checks are performed.
+- On `PUT /api/Product/{id}`, the `CategoryId` check runs before the product lookup, so an unknown `CategoryId` yields 400 even if the product `id` does not exist (404 is returned only when the `CategoryId` is valid).
+- `GET /api/Category/{catId}/products` is not paged and is unchanged by this feature.
 
 ## Requirements *(mandatory)*
 
@@ -73,6 +88,7 @@ All API controller actions use async EF Core calls so requests do not block thre
 - **FR-004**: List endpoints MUST return `PagedResponseDto<T>` with `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages`.
 - **FR-005**: `pageSize` MUST be clamped to 1..50 and `page` to a minimum of 1; results MUST be ordered by `Id`.
 - **FR-006**: Controller actions MUST use async EF Core operations.
+- **FR-007**: `Program` MUST be reachable from a test project (`public partial class Program { }`) so the API can be hosted in process (used by 005).
 
 ### Key Entities
 
@@ -88,5 +104,9 @@ All API controller actions use async EF Core calls so requests do not block thre
 
 - Category deletion rules and Product field validation are unchanged (see 002).
 - The list-endpoint response shape change is breaking for list consumers; the MVC app was adapted in 006.
-- Paging count queries use `CountAsync()`; all EF Core calls in the API controllers are async.
+- In `b17b5ee` the paging count used the synchronous `Count()`; `3149197` converted it to `CountAsync()` along with every other EF Core call in the API controllers.
 - Developers must set the key once: `dotnet user-secrets set "Jwt:Key" "<key>"` in `CategoryProduct.API`.
+
+## Later changes
+
+Behavior introduced after this feature (covered by the newer specs 009-014): `aebb0fc` added search, filter and sort to the same list endpoints (envelope unchanged); `d643b40` made `DELETE /api/Category/{id}` return 409 while the category still has products; `89d69df` added login rate limiting; `f47b61e` added global ProblemDetails error handling.
