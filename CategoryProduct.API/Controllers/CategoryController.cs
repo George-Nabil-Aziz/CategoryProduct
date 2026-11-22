@@ -1,5 +1,6 @@
 ﻿using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
+using CategoryProduct.API.Infrastructure;
 using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -104,11 +105,11 @@ namespace CategoryProduct.API.Controllers
         public async Task<IActionResult> GetAllProducts(int catId)
         {
             var products = await _context.Products
+                .AsNoTracking()
                 .Where(p => p.CategoryId == catId)
-                .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
                 .ToListAsync();
 
-            return Ok(products);
+            return Ok(products.Select(p => p.ToResponse(Url)).ToList());
         }
     }
 }

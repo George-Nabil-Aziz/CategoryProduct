@@ -33,6 +33,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddRouting(o => o.LowercaseUrls = true);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -73,6 +74,9 @@ var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitL
 var registerPermitLimit = builder.Configuration.GetValue("RateLimiting:RegisterPermitLimit", 5);
 var logoutPermitLimit = builder.Configuration.GetValue("RateLimiting:LogoutPermitLimit", 30);
 var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPermitLimit", 30);
+builder.Services.Configure<CategoryProduct.API.Services.ProductImageOptions>(
+    builder.Configuration.GetSection(CategoryProduct.API.Services.ProductImageOptions.SectionName));
+builder.Services.AddSingleton<CategoryProduct.API.Services.IProductImageStorage, CategoryProduct.API.Services.ProductImageStorage>();
 builder.Services.AddScoped<CategoryProduct.API.Services.TokenService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.RefreshTokenCleanupService>();
 builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenCleanupWorker>();

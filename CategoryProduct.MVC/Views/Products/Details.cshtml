@@ -41,6 +41,30 @@
 		</dd>
 
 	</dl>
+
+	@if (Model.ImageUrl != null)
+	{
+		<img src="@Url.Action("Image", "Products", new { id = Model.Id })" alt="@Model.Name" class="img-thumbnail mb-3" style="max-width:320px" />
+	}
+
+	@if (User.IsInRole("Admin"))
+	{
+		<div asp-validation-summary="All" class="text-danger"></div>
+		<form asp-action="UploadImage" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="mb-2">
+			<div class="input-group" style="max-width:480px">
+				<input type="file" name="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+				<button type="submit" class="btn btn-primary">@(Model.ImageUrl == null ? "Upload image" : "Replace image")</button>
+			</div>
+			<span class="form-text">JPG, PNG or WebP, up to 2 MB.</span>
+			@Html.AntiForgeryToken()
+		</form>
+		@if (Model.ImageUrl != null)
+		{
+			<form asp-action="RemoveImage" asp-route-id="@Model.Id" method="post">
+				<button type="submit" class="btn btn-outline-danger btn-sm">Remove image</button>
+			</form>
+		}
+	}
 </div>
 <div>
 	@if (User.IsInRole("Admin")) { <text><a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |</text> }

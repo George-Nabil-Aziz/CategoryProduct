@@ -118,6 +118,58 @@ namespace CategoryProduct.MVC.Controllers
             return View("Delete", product);
         }
 
+        // Proxies the API image so pages never expose the API host.
+        public async Task<IActionResult> Image(int id)
+        {
+            var image = await _api.GetProductImageAsync(id);
+            if (image == null) return NotFound();
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            Response.Headers.CacheControl = "no-cache";
+            return File(image.Value.Bytes, image.Value.ContentType);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(2_359_296)]
+        public async Task<IActionResult> UploadImage(int id, IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ModelState.AddModelError("file", "Please choose an image file.");
+                return await DetailsWithErrorsAsync(id);
+            }
+
+            await using var stream = file.OpenReadStream();
+            var result = await _api.UploadProductImageAsync(id, stream, file.FileName, file.ContentType);
+            if (result.Success) return RedirectToAction(nameof(Details), new { id });
+            if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
+            AddErrors(result);
+            return await DetailsWithErrorsAsync(id);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveImage(int id)
+        {
+            var result = await _api.DeleteProductImageAsync(id);
+            if (result.Success) return RedirectToAction(nameof(Details), new { id });
+            if (result.NotFound) return NotFound();
+            if (result.Unauthorized) return await SessionExpiredAsync();
+            AddErrors(result);
+            return await DetailsWithErrorsAsync(id);
+        }
+
+        private async Task<IActionResult> DetailsWithErrorsAsync(int id)
+        {
+            var product = await _api.GetProductAsync(id);
+            if (product == null) return NotFound();
+            await ResolveCategoryNameAsync(product);
+            return View("Details", product);
+        }
+
         private async Task LoadCategoriesAsync(int? selected) =>
             ViewData["CategoryId"] = new SelectList(await _api.GetAllCategoriesAsync(), "Id", "Name", selected);
 

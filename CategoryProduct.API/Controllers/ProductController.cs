@@ -4,6 +4,10 @@ using CategoryProduct.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
+using CategoryProduct.API.Infrastructure;
+using CategoryProduct.API.Services;
 
 namespace CategoryProduct.API.Controllers
 {
@@ -12,10 +16,17 @@ namespace CategoryProduct.API.Controllers
     public class ProductController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IProductImageStorage _storage;
+        private readonly ProductImageOptions _imageOptions;
+        private readonly ILogger<ProductController> _logger;
 
-        public ProductController(ApplicationDbContext context)
+        public ProductController(ApplicationDbContext context, IProductImageStorage storage,
+            IOptions<ProductImageOptions> imageOptions, ILogger<ProductController> logger)
         {
             _context = context;
+            _storage = storage;
+            _imageOptions = imageOptions.Value;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -54,11 +65,12 @@ namespace CategoryProduct.API.Controllers
                 _ => query.OrderBy(p => p.Id)
             };
 
-            var products = await ordered
+            var entities = await ordered
+                .AsNoTracking()
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => new ProductResponseDto(p.Id, p.Name, p.Price, p.Quantity, p.CategoryId))
                 .ToListAsync();
+            var products = entities.Select(p => p.ToResponse(Url)).ToList();
 
             return Ok(new PagedResponseDto<ProductResponseDto>(
                 products, page, pageSize, totalCount, (int)Math.Ceiling(totalCount / (double)pageSize)));
@@ -72,7 +84,7 @@ namespace CategoryProduct.API.Controllers
             if (product == null)
                 return NotFound();
 
-            return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
+            return Ok(product.ToResponse(Url));
         }
 
         [Authorize(Roles = "Admin")]
@@ -96,7 +108,7 @@ namespace CategoryProduct.API.Controllers
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
 
-            return Ok(new ProductResponseDto(product.Id, product.Name, product.Price, product.Quantity, product.CategoryId));
+            return Ok(product.ToResponse(Url));
         }
 
         [Authorize(Roles = "Admin")]
@@ -121,7 +133,7 @@ namespace CategoryProduct.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new ProductResponseDto(oldProduct.Id, oldProduct.Name, oldProduct.Price, oldProduct.Quantity, oldProduct.CategoryId));
+            return Ok(oldProduct.ToResponse(Url));
         }
 
         [Authorize(Roles = "Admin")]
@@ -133,10 +145,112 @@ namespace CategoryProduct.API.Controllers
             if (product == null)
                 return NotFound();
 
+            var imageFileName = product.ImageFileName;
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
+            _storage.Delete(imageFileName);
 
             return Ok();
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/image")]
+        [RequestSizeLimit(2_359_296)]
+        public async Task<IActionResult> UploadImage(int id, IFormFile? file, CancellationToken cancellationToken)
+        {
+            var product = await _context.Products.FindAsync(new object[] { id }, cancellationToken);
+            if (product == null)
+                return NotFound();
+
+            if (file == null || file.Length == 0)
+                return FileError("A non-empty image file is required in the 'file' field.");
+            if (file.Length > _imageOptions.MaxBytes)
+                return FileError($"The image must be {_imageOptions.MaxBytes / (1024 * 1024.0):0.##} MB or smaller.");
+
+            var ext = ProductImageFormats.NormalizeExtension(Path.GetExtension(file.FileName));
+            if (ext == null)
+                return FileError("Only .jpg, .jpeg, .png and .webp files are allowed.");
+            if (!ProductImageFormats.IsAllowedContentType(file.ContentType))
+                return FileError("The file content type must be image/jpeg, image/png or image/webp.");
+
+            string newFileName;
+            await using (var stream = file.OpenReadStream())
+            {
+                var header = new byte[12];
+                var read = 0;
+                while (read < header.Length)
+                {
+                    var n = await stream.ReadAsync(header.AsMemory(read), cancellationToken);
+                    if (n == 0) break;
+                    read += n;
+                }
+                if (ProductImageFormats.Sniff(header.AsSpan(0, read)) != ext)
+                    return FileError("The file content does not match a supported image format.");
+
+                stream.Seek(0, SeekOrigin.Begin);
+                newFileName = await _storage.SaveAsync(id, stream, ext, cancellationToken);
+            }
+
+            var oldFileName = product.ImageFileName;
+            product.ImageFileName = newFileName;
+            try
+            {
+                await _context.SaveChangesAsync(CancellationToken.None);
+            }
+            catch
+            {
+                _storage.Delete(newFileName);
+                throw;
+            }
+            _storage.Delete(oldFileName);
+
+            return Ok(product.ToResponse(Url));
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id}/image")]
+        public async Task<IActionResult> DeleteImage(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
+                return NotFound();
+
+            if (product.ImageFileName != null)
+            {
+                var fileName = product.ImageFileName;
+                product.ImageFileName = null;
+                await _context.SaveChangesAsync();
+                _storage.Delete(fileName);
+            }
+
+            return NoContent();
+        }
+
+        [HttpGet("{id}/image")]
+        public async Task<IActionResult> GetImage(int id)
+        {
+            var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            if (product?.ImageFileName == null)
+                return NotFound();
+
+            var path = _storage.TryGetPath(product.ImageFileName);
+            if (path == null)
+            {
+                _logger.LogWarning("Image file {FileName} for product {ProductId} is missing on disk", product.ImageFileName, id);
+                return NotFound();
+            }
+
+            var contentType = ProductImageFormats.ContentTypeForExtension(Path.GetExtension(path).TrimStart('.'))
+                ?? "application/octet-stream";
+            Response.Headers[HeaderNames.CacheControl] = "no-cache";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return PhysicalFile(path, contentType, null, new EntityTagHeaderValue($"\"{product.ImageFileName}\""));
+        }
+
+        private IActionResult FileError(string message)
+        {
+            ModelState.AddModelError("file", message);
+            return ValidationProblem(ModelState);
         }
     }
 }

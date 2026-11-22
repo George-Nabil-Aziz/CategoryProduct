@@ -26,6 +26,8 @@ namespace CategoryProduct.API.Data
                 b.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
+            modelBuilder.Entity<Product>().Property(p => p.ImageFileName).HasMaxLength(100);
+
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.UserName)
                 .IsUnique();

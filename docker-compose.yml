@@ -25,6 +25,9 @@ services:
       ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=CategoryProductDB;User Id=sa;Password=${SA_PASSWORD:?Set SA_PASSWORD in .env};TrustServerCertificate=True;"
       Database__MigrateOnStartup: "true"
       Hosting__UseHttpsRedirection: "false"
+      ProductImages__StoragePath: /data/product-images
+    volumes:
+      - productimages:/data/product-images
     ports:
       - "${API_HOST_PORT:-5028}:8080"
 
@@ -44,3 +47,4 @@ services:
 
 volumes:
   sqldata:
+  productimages:

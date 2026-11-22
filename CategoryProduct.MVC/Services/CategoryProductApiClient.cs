@@ -105,6 +105,26 @@ namespace CategoryProduct.MVC.Services
 
         public Task<ApiResult> DeleteProductAsync(int id) => SendAsync(HttpMethod.Delete, $"api/product/{id}");
 
+        public async Task<(byte[] Bytes, string ContentType)?> GetProductImageAsync(int id)
+        {
+            using var response = await _http.GetAsync($"api/product/{id}/image");
+            if (response.StatusCode == HttpStatusCode.NotFound) return null;
+            response.EnsureSuccessStatusCode();
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            return (bytes, response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream");
+        }
+
+        public Task<ApiResult> UploadProductImageAsync(int id, Stream content, string fileName, string contentType)
+        {
+            var form = new MultipartFormDataContent();
+            var file = new StreamContent(content);
+            file.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+            form.Add(file, "file", fileName);
+            return SendAsync(HttpMethod.Post, $"api/product/{id}/image", form);
+        }
+
+        public Task<ApiResult> DeleteProductImageAsync(int id) => SendAsync(HttpMethod.Delete, $"api/product/{id}/image");
+
         // ---------- helpers ----------
         private async Task<T?> GetOrNullAsync<T>(string url) where T : class
         {
@@ -114,10 +134,12 @@ namespace CategoryProduct.MVC.Services
             return await response.Content.ReadFromJsonAsync<T>();
         }
 
-        private async Task<ApiResult> SendAsync(HttpMethod method, string url, object? body = null)
+        private Task<ApiResult> SendAsync(HttpMethod method, string url, object? body = null) =>
+            SendAsync(method, url, body != null ? JsonContent.Create(body) : null);
+
+        private async Task<ApiResult> SendAsync(HttpMethod method, string url, HttpContent? content)
         {
-            using var request = new HttpRequestMessage(method, url);
-            if (body != null) request.Content = JsonContent.Create(body);
+            using var request = new HttpRequestMessage(method, url) { Content = content };
             ApplyBearerToken(request);
 
             using var response = await _http.SendAsync(request);

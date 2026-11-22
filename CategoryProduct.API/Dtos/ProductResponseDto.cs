@@ -1,4 +1,4 @@
 namespace CategoryProduct.API.Dtos
 {
-    public record ProductResponseDto(int Id, string Name, decimal Price, int Quantity, int CategoryId);
+    public record ProductResponseDto(int Id, string Name, decimal Price, int Quantity, int CategoryId, string? ImageUrl = null);
 }

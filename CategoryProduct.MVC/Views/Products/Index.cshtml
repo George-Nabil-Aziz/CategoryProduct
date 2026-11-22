@@ -30,6 +30,7 @@
 <table class="table">
 	<thead>
 		<tr>
+			<th></th>
 			<th>
 				@Html.DisplayNameFor(model => model.Name)
 			</th>
@@ -50,6 +51,12 @@
 		@foreach (var item in Model)
 		{
 			<tr>
+				<td>
+					@if (item.ImageUrl != null)
+					{
+						<img src="@Url.Action("Image", "Products", new { id = item.Id })" alt="@item.Name" style="max-height:48px" />
+					}
+				</td>
 				<td>
 					@Html.DisplayFor(modelItem => item.Name)
 				</td>

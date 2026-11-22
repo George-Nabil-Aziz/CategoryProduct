@@ -20,5 +20,8 @@ namespace CategoryProduct.MVC.Models
 
         // Resolved by the controller from the categories list (API returns only CategoryId).
         public string? CategoryName { get; set; }
+
+        // Absolute API image URL; used only as a has-image flag. Pages always use the MVC Products/Image/{id} proxy.
+        public string? ImageUrl { get; set; }
     }
 }

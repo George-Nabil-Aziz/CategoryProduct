@@ -18,11 +18,25 @@ namespace CategoryProduct.API.Tests
         protected readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot DbRoot = new();
         public readonly string DbName = Guid.NewGuid().ToString();
 
+        public string ImageStoragePath { get; } =
+            Path.Combine(Path.GetTempPath(), "cp-images-" + Guid.NewGuid().ToString("N"));
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                try { if (Directory.Exists(ImageStoragePath)) Directory.Delete(ImageStoragePath, true); }
+                catch (IOException) { }
+            }
+        }
+
         protected virtual int LoginPermitLimit => 1000;
         protected virtual int LogoutPermitLimit => 1000;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseSetting("ProductImages:StoragePath", ImageStoragePath);
             builder.UseSetting("Jwt:Key", "test-key-test-key-test-key-test-key-1234567890");
             builder.UseSetting("Jwt:Issuer", "CategoryProduct.API");
             builder.UseSetting("Jwt:Audience", "CategoryProduct.Client");
