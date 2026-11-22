@@ -95,7 +95,7 @@ Groups A-D can be implemented by different agents at the same time. Do NOT add t
 - [X] T031 [P] Update `specs/018-inventory/spec.md` Known Gaps: the image endpoints 500-instead-of-409 item closed by 020 US3; the cascade, `SetNull` and concurrent-write item covered by 020 US1 tests (pending CI).
 - [X] T032 [P] Update `specs/019-cart-orders/spec.md` Known Gaps: same-cart double checkout, atomicity/rollback, unique cart index, `SetNull` and cascade items covered by 020 US1 tests (pending CI); T049 stays open until the CI run is green.
 - [X] T033 Run `dotnet ef migrations has-pending-model-changes --project CategoryProduct.API` (no changes) and `dotnet test CategoryProduct.slnx`; confirm `git diff` shows no change to `CategoryProduct.slnx` and no new migration.
-- [ ] T034 After the first push, check the `sqlserver-tests` job result on GitHub, fix timing/quoting issues, then update spec 020 Known Gaps and the five older specs accordingly.
+- [X] T034 After the first push, check the `sqlserver-tests` job result on GitHub, fix timing/quoting issues, then update spec 020 Known Gaps and the five older specs accordingly.
 
 ## Dependencies and execution order
 
