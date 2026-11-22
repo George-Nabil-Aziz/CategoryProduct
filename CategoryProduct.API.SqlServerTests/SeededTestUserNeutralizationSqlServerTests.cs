@@ -30,8 +30,12 @@ namespace CategoryProduct.API.SqlServerTests
             }
         }
 
-        private static Task<User> TestUserAsync(ApplicationDbContext db) =>
-            db.Users.AsNoTracking().SingleAsync(u => u.UserName == "testuser");
+        private sealed record SeededRow(int Id, string PasswordHash, string Role);
+
+        // Projection only: the test migrates to an old schema, so selecting every mapped column (e.g. later additions) would fail.
+        private static Task<SeededRow> TestUserAsync(ApplicationDbContext db) =>
+            db.Users.AsNoTracking().Where(u => u.UserName == "testuser")
+                .Select(u => new SeededRow(u.Id, u.PasswordHash, u.Role)).SingleAsync();
 
         [Fact]
         public async Task SeededAdmin_IsNeutralized_TokensRevoked_OrderKept()

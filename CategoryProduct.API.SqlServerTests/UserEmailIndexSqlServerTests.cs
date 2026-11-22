@@ -36,10 +36,13 @@ namespace CategoryProduct.API.SqlServerTests
         [Fact]
         public Task ManyUsersWithoutEmail_AreAccepted() => WithDatabaseAsync(async (db, _) =>
         {
-            db.Users.AddRange(NewUser(null), NewUser(null), NewUser(null));
+            var created = new[] { NewUser(null), NewUser(null), NewUser(null) };
+            db.Users.AddRange(created);
             await db.SaveChangesAsync();
 
-            Assert.Equal(3, await db.Users.CountAsync(u => u.Email == null));
+            var ids = created.Select(u => u.Id).ToList();
+            Assert.All(ids, id => Assert.True(id > 0));
+            Assert.Equal(3, await db.Users.CountAsync(u => ids.Contains(u.Id) && u.Email == null));
         });
 
         [Fact]
