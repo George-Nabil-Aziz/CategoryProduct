@@ -169,6 +169,7 @@ Older specs that list the seeded `testuser` or the missing 429 handling as open 
 - **`AdminDemotionSqlServerTests` keeps working**: it deletes any `testuser` row before counting admins; a neutralized row (role `User`) is deleted just the same.
 
 ## Known Gaps
+- **CI verified**: the run for commit `09a7c3b` passed all four jobs (`build-test`, `docker-build`, `sqlserver-tests` including `SeededTestUserNeutralizationSqlServerTests`, `compose-smoke`) on 2026-11-22. Local: 560 tests (314 MVC, 246 API) green on 3 more full runs during review.
 
 - **Implemented locally; CI not yet run** (to be recorded after the user pushes, same style as 022; task T030 open).
 - **Final local facts**: `dotnet build CategoryProduct.slnx` and `dotnet build CategoryProduct.API.SqlServerTests` both finish with 0 errors. `dotnet test CategoryProduct.slnx` runs 560 tests, all passing on four consecutive full runs: 314 in `CategoryProduct.MVC.Tests` (302 before, 12 new) and 246 in `CategoryProduct.API.Tests` (212 before, 34 new: 30 `BootstrapAdminTests`, 4 `SeededTestUserMarkerTests`). Baseline before the change was 514 (302 MVC, 212 API).

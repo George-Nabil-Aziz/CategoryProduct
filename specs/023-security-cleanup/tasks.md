@@ -98,7 +98,7 @@ description: "Task list for 023-security-cleanup"
 - [X] T027 Run `dotnet build CategoryProduct.slnx` (0 errors, no new warnings in touched files) and `dotnet build CategoryProduct.API.SqlServerTests`.
 - [X] T028 Run `dotnet test CategoryProduct.slnx` THREE times in a row; all green each time; record the test count (more than the 514 baseline).
 - [X] T029 Complete `specs/023-security-cleanup/spec.md` Known Gaps with the final facts (test counts, whether the SQL Server test ran locally or only on CI, list of older specs updated) and tick `checklists/requirements.md`.
-- [ ] T030 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new neutralization test) and `compose-smoke` are green and record the run in Known Gaps in the same style as 022.
+- [X] T030 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new neutralization test) and `compose-smoke` are green and record the run in Known Gaps in the same style as 022.
 
 ---
 
