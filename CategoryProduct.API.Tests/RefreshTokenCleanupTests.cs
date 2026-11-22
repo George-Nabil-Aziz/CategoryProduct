@@ -64,5 +64,32 @@ namespace CategoryProduct.API.Tests
             Assert.Equal(2, removed);
             Assert.Equal(3, db.RefreshTokens.Count());
         }
+
+        [Fact]
+        public async Task PurgeAsync_AlsoRemovesOldExpiredAndOldUsedResetTokens_AndReturnsTheTotal()
+        {
+            using var db = NewDb();
+            var now = DateTime.UtcNow;
+            await SeedAsync(db, now);
+            var user = db.Users.Single();
+            PasswordResetToken R(string h, DateTime expires, DateTime? used) => new()
+            {
+                User = user, TokenHash = h, CreatedAtUtc = now.AddDays(-30), ExpiresAtUtc = expires, UsedAtUtc = used
+            };
+            db.PasswordResetTokens.AddRange(
+                R("reset-expired-old", now.AddDays(-10), null),
+                R("reset-used-old", now.AddDays(5), now.AddDays(-10)),
+                R("reset-expired-recent", now.AddDays(-1), null),
+                R("reset-used-recent", now.AddDays(5), now.AddDays(-1)),
+                R("reset-valid", now.AddMinutes(20), null));
+            await db.SaveChangesAsync();
+
+            var removed = await new RefreshTokenCleanupService(db, Config("7")).PurgeAsync(now);
+
+            Assert.Equal(4, removed);
+            Assert.Equal(new[] { "reset-expired-recent", "reset-used-recent", "reset-valid" },
+                db.PasswordResetTokens.Select(t => t.TokenHash).OrderBy(h => h).ToList());
+            Assert.Equal(3, db.RefreshTokens.Count());
+        }
     }
 }

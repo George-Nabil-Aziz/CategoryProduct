@@ -204,4 +204,16 @@ public class ProfileTests : MvcTestBase
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         Assert.Empty(Fake.Calls(HttpMethod.Put, "api/account/email"));
     }
+
+    [Fact]
+    public async Task Get_shows_a_change_password_link()
+    {
+        await SignInUserAsync();
+        ScriptMe();
+
+        var html = await GetHtmlAsync(Page);
+
+        Assert.Contains("id=\"change-password-link\"", html);
+        Assert.Contains("href=\"/Account/ChangePassword\"", html);
+    }
 }

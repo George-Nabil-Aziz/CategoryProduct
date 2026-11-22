@@ -21,10 +21,10 @@
 
 ## Feature Readiness
 
-- [ ] Every FR maps to a task in tasks.md (tick after review)
-- [ ] Every story has tests written before the change (tick after implementation)
+- [x] Every FR maps to a task in tasks.md (tick after review)
+- [x] Every story has tests written before the change (tick after implementation)
 - [x] Constitution Check passes (plan.md); judgement calls in Complexity Tracking
 - [x] Schema change will ship as a generated migration (data-model.md, T012)
 - [x] Claims verified against code by reading: no change/reset endpoint exists; `PasswordHasher<User>` use in Register/Login; register password rules (`Required` + `MinLength(8)`); refresh token hashing (`TokenService.Hash`, SHA-256 hex) and `Revoke`; `IssueAsync`; rate-limit policy pattern and `ApiFactory` limits; 024 `IEmailSender`/`EmailQueue`/`NotificationService`/`EmailAddressRules`; `RecordingEmailSender`; `RefreshTokenCleanupService`/`Worker`; `TimeProvider` only in the worker and `FakeTimeProvider` package already referenced; MVC `AccountController`, `AuthSessionService`, `ApiResult`, `ApiRateLimit`
-- [ ] To verify during implementation: `Program.cs` has no other `TimeProvider` registration (R5); nested compose interpolation `${A:-http://localhost:${B:-5256}}` is accepted (CI `compose-smoke`); the MVC `FakeApi` returns 202 and 204 with empty bodies as `ApiResult` expects; `HasPendingModelChanges()` false after the migration
+- [x] To verify during implementation: `Program.cs` has no other `TimeProvider` registration (R5); nested compose interpolation `${A:-http://localhost:${B:-5256}}` is accepted (CI `compose-smoke`); the MVC `FakeApi` returns 202 and 204 with empty bodies as `ApiResult` expects; `HasPendingModelChanges()` false after the migration (verified locally: single TimeProvider registration, FakeApi empty 202/204, no pending model changes on LocalDB; nested compose interpolation NOT verified locally because Docker is unavailable, left to CI compose-smoke)
 - [x] Known Gaps list what stays open (CI verification task T041 left open on purpose)

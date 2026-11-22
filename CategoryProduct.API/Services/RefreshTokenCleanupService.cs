@@ -14,7 +14,7 @@ namespace CategoryProduct.API.Services
             _configuration = configuration;
         }
 
-        /// <summary>Deletes tokens expired or revoked before now - RetentionDays; returns the number removed.</summary>
+        /// <summary>Deletes refresh and password reset tokens expired, revoked or used before now - RetentionDays; returns the total removed.</summary>
         public async Task<int> PurgeAsync(DateTime utcNow, CancellationToken ct = default)
         {
             var days = _configuration.GetValue("RefreshTokenCleanup:RetentionDays", 7);
@@ -25,8 +25,12 @@ namespace CategoryProduct.API.Services
                 .Where(r => r.ExpiresAtUtc < cutoff || (r.RevokedAtUtc != null && r.RevokedAtUtc < cutoff))
                 .ToListAsync(ct);
             _context.RefreshTokens.RemoveRange(old);
+            var oldResets = await _context.PasswordResetTokens
+                .Where(t => t.ExpiresAtUtc < cutoff || (t.UsedAtUtc != null && t.UsedAtUtc < cutoff))
+                .ToListAsync(ct);
+            _context.PasswordResetTokens.RemoveRange(oldResets);
             await _context.SaveChangesAsync(ct);
-            return old.Count;
+            return old.Count + oldResets.Count;
         }
     }
 }

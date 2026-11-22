@@ -18,6 +18,8 @@
             <dd id="profile-role">@ViewData["ProfileRole"]</dd>
         </dl>
 
+        <p><a asp-action="ChangePassword" id="change-password-link">Change password</a></p>
+
         <form asp-action="Profile" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 

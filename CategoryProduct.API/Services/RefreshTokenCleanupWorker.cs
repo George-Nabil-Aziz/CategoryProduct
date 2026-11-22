@@ -31,7 +31,7 @@ namespace CategoryProduct.API.Services
                         using var scope = _scopeFactory.CreateScope();
                         var service = scope.ServiceProvider.GetRequiredService<RefreshTokenCleanupService>();
                         var count = await service.PurgeAsync(_time.GetUtcNow().UtcDateTime, stoppingToken);
-                        _logger.LogInformation("Purged {Count} old refresh tokens", count);
+                        _logger.LogInformation("Purged {Count} old tokens", count);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {

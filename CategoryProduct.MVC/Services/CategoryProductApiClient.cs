@@ -62,6 +62,15 @@ namespace CategoryProduct.MVC.Services
             SendAsync<ProfileItem>(HttpMethod.Put, "api/account/email",
                 new { email = string.IsNullOrWhiteSpace(email) ? null : email.Trim() });
 
+        public Task<ApiResult<LoginResult>> ChangePasswordAsync(string currentPassword, string newPassword) =>
+            SendAsync<LoginResult>(HttpMethod.Post, "api/account/change-password", new { currentPassword, newPassword });
+
+        public Task<ApiResult> ForgotPasswordAsync(string userNameOrEmail) =>
+            SendAsync(HttpMethod.Post, "api/account/forgot-password", new { userNameOrEmail });
+
+        public Task<ApiResult> ResetPasswordAsync(string token, string newPassword) =>
+            SendAsync(HttpMethod.Post, "api/account/reset-password", new { token, newPassword });
+
         public Task<ApiResult<PagedResult<UserItem>>> GetUsersAsync(int page, int pageSize = 10, string? search = null) =>
             GetAsync<PagedResult<UserItem>>(
                 $"api/users?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}");

@@ -134,6 +134,54 @@ namespace CategoryProduct.API.Services
             }
         }
 
+        /// <summary>Queues the reset link mail. The link and its token are never logged.</summary>
+        public Task PasswordResetRequestedAsync(User user, string link, int validMinutes)
+        {
+            try
+            {
+                if (!_email.Enabled) return Task.CompletedTask;
+                var to = user.Email;
+                if (string.IsNullOrEmpty(to)) return Task.CompletedTask;
+
+                var sb = new StringBuilder();
+                sb.Append("Hello ").Append(StripLineBreaks(user.UserName)).Append(",\n\n");
+                sb.Append("We received a request to reset the password of your account.\n");
+                sb.Append("Open this link to choose a new password (valid for ")
+                    .Append(validMinutes.ToString(CultureInfo.InvariantCulture)).Append(" minutes, one use):\n\n");
+                sb.Append(link).Append("\n\n");
+                sb.Append("If you did not ask for this, ignore this email: your password stays as it is.\n");
+                _queue.TryEnqueue(new EmailMessage(to, "Reset your password", sb.ToString()));
+            }
+            catch (Exception)
+            {
+                _logger.LogWarning("Password reset notification failed.");
+            }
+            return Task.CompletedTask;
+        }
+
+        /// <summary>Queues the "password changed" notice (no password, token or link inside).</summary>
+        public Task PasswordChangedAsync(User user)
+        {
+            try
+            {
+                if (!_email.Enabled) return Task.CompletedTask;
+                var to = user.Email;
+                if (string.IsNullOrEmpty(to)) return Task.CompletedTask;
+
+                var sb = new StringBuilder();
+                sb.Append("Hello ").Append(StripLineBreaks(user.UserName)).Append(",\n\n");
+                sb.Append("The password of your account was changed on ").Append(Date(DateTime.UtcNow)).Append(".\n");
+                sb.Append("All other sessions were signed out.\n\n");
+                sb.Append("If you did not do this, reset your password immediately using \"Forgot password\" on the login page, and contact an administrator.\n");
+                _queue.TryEnqueue(new EmailMessage(to, "Your password was changed", sb.ToString()));
+            }
+            catch (Exception)
+            {
+                _logger.LogWarning("Password changed notification failed.");
+            }
+            return Task.CompletedTask;
+        }
+
         private static string ProductName(StockMovement m) =>
             StripLineBreaks(m.Product?.Name ?? ("product " + m.ProductId.ToString(CultureInfo.InvariantCulture)));
 

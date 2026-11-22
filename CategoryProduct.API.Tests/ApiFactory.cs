@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using CategoryProduct.API.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace CategoryProduct.API.Tests
 {
@@ -30,6 +31,9 @@ namespace CategoryProduct.API.Tests
 
         public EmailQueue EmailQueue => Services.GetRequiredService<EmailQueue>();
 
+        /// <summary>Controls the TimeProvider used by the password reset code (starts at real UTC now).</summary>
+        public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
@@ -45,6 +49,10 @@ namespace CategoryProduct.API.Tests
         protected virtual int LoginPermitLimit => 1000;
         protected virtual int RefreshPermitLimit => 1000;
         protected virtual int LogoutPermitLimit => 1000;
+        protected virtual int ForgotPasswordPermitLimit => 1000;
+        protected virtual int PasswordPermitLimit => 1000;
+        protected virtual bool EmailEnabled => true;
+        protected virtual string PublicMvcBaseUrl => "https://mvc.test";
         protected virtual int LowStockThreshold => 5;
         protected virtual int RefreshReuseGraceSeconds => 0;
         protected virtual bool SeedAdmin => true;
@@ -63,7 +71,10 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("RateLimiting:RefreshPermitLimit", RefreshPermitLimit.ToString());
             builder.UseSetting("RateLimiting:LogoutPermitLimit", LogoutPermitLimit.ToString());
             builder.UseSetting("RateLimiting:ProfilePermitLimit", "1000");
-            builder.UseSetting("Email:Enabled", "true");
+            builder.UseSetting("RateLimiting:ForgotPasswordPermitLimit", ForgotPasswordPermitLimit.ToString());
+            builder.UseSetting("RateLimiting:PasswordPermitLimit", PasswordPermitLimit.ToString());
+            builder.UseSetting("App:PublicMvcBaseUrl", PublicMvcBaseUrl);
+            builder.UseSetting("Email:Enabled", EmailEnabled ? "true" : "false");
             builder.UseSetting("Email:PickupDirectory", EmailPickupPath);
 
             builder.ConfigureServices(services =>
@@ -79,6 +90,9 @@ namespace CategoryProduct.API.Tests
                     services.Remove(d);
 
                 services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(DbName, DbRoot));
+
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(Clock);
 
                 services.RemoveAll<IEmailSender>();
                 services.AddSingleton<IEmailSender>(Emails);

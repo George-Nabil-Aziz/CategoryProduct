@@ -142,6 +142,45 @@ namespace CategoryProduct.API.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("CategoryProduct.API.Models.PasswordResetToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens");
+                });
+
             modelBuilder.Entity("CategoryProduct.API.Models.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -348,6 +387,17 @@ namespace CategoryProduct.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("CategoryProduct.API.Models.PasswordResetToken", b =>
+                {
+                    b.HasOne("CategoryProduct.API.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CategoryProduct.API.Models.Product", b =>

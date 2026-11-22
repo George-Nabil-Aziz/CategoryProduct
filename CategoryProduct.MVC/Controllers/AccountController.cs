@@ -136,10 +136,126 @@ namespace CategoryProduct.MVC.Controllers
             return View(model);
         }
 
-        private async Task<IActionResult> SessionExpiredAsync()
+        // ---------- Password management ----------
+        private const string InvalidResetLinkMessage = "This reset link is invalid or has expired.";
+
+        [HttpGet]
+        public IActionResult ForgotPassword() => View(new ForgotPasswordViewModel());
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _api.ForgotPasswordAsync(model.UserNameOrEmail.Trim());
+            if (result.TooManyRequests)
+            {
+                ModelState.AddModelError(string.Empty, ApiRateLimit.Message);
+                return View(model);
+            }
+            if (result.Errors.Count > 0)
+            {
+                foreach (var (_, messages) in result.Errors)
+                    foreach (var m in messages)
+                        ModelState.AddModelError(nameof(model.UserNameOrEmail), m);
+                return View(model);
+            }
+            return RedirectToAction(nameof(ForgotPasswordConfirmation));
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPasswordConfirmation() => View();
+
+        [HttpGet]
+        public IActionResult ResetPassword(string? token = null)
+        {
+            ApplyResetPageHeaders();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                ViewData["InvalidLink"] = InvalidResetLinkMessage;
+                return View(new ResetPasswordViewModel());
+            }
+            return View(new ResetPasswordViewModel { Token = token });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            ApplyResetPageHeaders();
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _api.ResetPasswordAsync(model.Token, model.NewPassword);
+            if (result.Success)
+            {
+                TempData["Success"] = "Your password was changed. Sign in with your new password.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (result.TooManyRequests)
+                ModelState.AddModelError(string.Empty, ApiRateLimit.Message);
+            else if (result.Errors.ContainsKey("Token"))
+            {
+                ViewData["InvalidLink"] = InvalidResetLinkMessage;
+                return View(new ResetPasswordViewModel());
+            }
+            else if (result.Errors.Count > 0)
+                foreach (var (field, messages) in result.Errors)
+                    foreach (var m in messages)
+                        ModelState.AddModelError(field == "NewPassword" ? nameof(model.NewPassword) : string.Empty, m);
+            else
+                ModelState.AddModelError(string.Empty, "Could not reset the password. Please try again.");
+            return View(model);
+        }
+
+        private void ApplyResetPageHeaders()
+        {
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+            Response.Headers["Cache-Control"] = "no-store";
+        }
+
+        [HttpGet]
+        [Authorize]
+        public IActionResult ChangePassword() => View(new ChangePasswordViewModel());
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _api.ChangePasswordAsync(model.CurrentPassword, model.NewPassword);
+            if (result.Unauthorized) return await SessionExpiredAsync(nameof(ChangePassword));
+            if (result.Success && result.Value != null)
+            {
+                await SignInAsync(User.Identity?.Name ?? string.Empty, result.Value);
+                TempData["Success"] = "Password changed.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            if (result.TooManyRequests)
+                ModelState.AddModelError(string.Empty, ApiRateLimit.Message);
+            else if (result.Errors.Count > 0)
+                foreach (var (field, messages) in result.Errors)
+                    foreach (var m in messages)
+                        ModelState.AddModelError(
+                            field switch
+                            {
+                                "CurrentPassword" => nameof(model.CurrentPassword),
+                                "NewPassword" => nameof(model.NewPassword),
+                                _ => string.Empty
+                            }, m);
+            else
+                ModelState.AddModelError(string.Empty, "Could not change the password. Please try again.");
+            return View(model);
+        }
+
+        private async Task<IActionResult> SessionExpiredAsync(string returnAction = nameof(Profile))
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction(nameof(Login), new { returnUrl = Url.Action(nameof(Profile)) });
+            return RedirectToAction(nameof(Login), new { returnUrl = Url.Action(returnAction) });
         }
 
         [HttpGet]

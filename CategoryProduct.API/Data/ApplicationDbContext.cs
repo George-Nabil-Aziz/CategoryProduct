@@ -14,6 +14,7 @@ namespace CategoryProduct.API.Data
         public DbSet<User> Users { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<StockMovement> StockMovements { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Order> Orders { get; set; }
@@ -28,6 +29,15 @@ namespace CategoryProduct.API.Data
                 b.Property(r => r.ReplacedByTokenHash).HasMaxLength(128);
                 b.Property(r => r.ConcurrencyStamp).IsConcurrencyToken();
                 b.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PasswordResetToken>(b =>
+            {
+                b.HasIndex(t => t.TokenHash).IsUnique();
+                b.HasIndex(t => t.UserId);
+                b.Property(t => t.TokenHash).HasMaxLength(128).IsRequired();
+                b.Property(t => t.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Product>().Property(p => p.ImageFileName).HasMaxLength(100);

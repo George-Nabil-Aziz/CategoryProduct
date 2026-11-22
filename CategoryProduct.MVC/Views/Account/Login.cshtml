@@ -6,6 +6,8 @@
 
 <h1>Login</h1>
 <hr />
+
+@if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
 <div class="row">
     <div class="col-md-4">
         <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]">
@@ -26,6 +28,7 @@
             <div class="form-group mt-2">
                 <input type="submit" value="Login" class="btn btn-primary" />
                 <a asp-action="Register" class="btn btn-link">Register</a>
+                <a asp-action="ForgotPassword" id="forgot-password-link" class="btn btn-link">Forgot password?</a>
             </div>
         </form>
     </div>

@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-22
 
-**Status**: Draft (docs only; no code written yet)
+**Status**: Implemented (CI verification pending, T041)
 
 **Input**: User description: "Add password management. (1) A signed-in user can change their password (`POST api/account/change-password`): verify the current one, apply the register password rules, rehash, revoke all refresh tokens and keep the current MVC session working; rate limited; an MVC page under Profile. (2) Forgot/reset by email using the 024 email queue: `POST api/account/forgot-password` always answers the same way (no user enumeration) and mails a single-use, expiring, hash-only-stored token link to the MVC reset page; `POST api/account/reset-password` sets the password, marks the token used, revokes all refresh tokens and mails a 'password changed' notice. (3) The same notice after a change-password. (4) MVC: Forgot password link on login, ForgotPassword page, ResetPassword page, ChangePassword page. Rate limits on all of it. Purge expired reset tokens in the existing refresh-token cleanup."
 
@@ -199,7 +199,12 @@ Expired and old used reset tokens are removed by the existing refresh-token clea
 
 ## Known Gaps
 
-- **Not implemented yet**: this folder holds the specification only (docs-only step). Every task in `tasks.md` is open. T040 fills this section with the final facts (migration name, test counts, deviations); T041 (CI verification) stays open until a CI run is observed.
+- **Implemented** (T001-T040 done; T041 open). Migration: `20261122195916_AddPasswordResetTokens` (generated with `dotnet ef migrations add AddPasswordResetTokens --project CategoryProduct.API`, only creates `PasswordResetTokens` with the two indexes and the cascade FK; never hand-edited; `dotnet ef database update` was not run).
+- **Test counts**: `dotnet test CategoryProduct.slnx` = 365 MVC (was 337, +28) + 406 API (was 366, +40) = 771 (was 703); four consecutive full runs all green. `CategoryProduct.API.SqlServerTests` = 24 tests (+4 for the new table), run locally on LocalDB (`(localdb)\MSSQLLocalDB`, throwaway GUID-named databases) and all passed; it is not part of `CategoryProduct.slnx` and was also built with `dotnet build CategoryProduct.API.SqlServerTests` (0 errors).
+- **Compose validation**: Docker is not installed on the development machine, so `docker compose config` was not run and the nested `${APP_PUBLIC_MVC_BASE_URL:-http://localhost:${MVC_HOST_PORT:-5256}}` interpolation was reviewed by eye only; both new variables have non-empty defaults. `compose-smoke` in CI is the real check.
+- **Deviations from the docs**: (1) `AccountController` also takes `ILogger<AccountController>` (for the Warning logs of the forgot-password catch-all and the base-URL fallback), in addition to `NotificationService` and `TimeProvider`. (2) `ResetPasswordRequestDto.Token` carries the fixed message `The reset link is invalid or has expired.` as its `[Required]` error message so an empty or missing token returns the same text as an unknown one. (3) Forgot-password looks the user up by user name first and only then by normalized email (so an ambiguous input cannot pick a random account); it invalidates only unused, unexpired older tokens. (4) The `PasswordEmailFormatTests` go through the real `NotificationService`/queue/recording sender of `ApiFactory` (the queue reader is internal), and `ApiFactory` also gained virtual `EmailEnabled` and `PublicMvcBaseUrl` for the "email disabled" and "invalid base URL" tests. (5) Production code for cleanup (T031) was written before its purge test (T030) in this run; the test exists and passes.
+- **Worker clock**: `RefreshTokenCleanupWorker` now receives the registered `TimeProvider`; in API tests that is the fake clock, so advancing it by 60 minutes in total fires one harmless purge (nothing is older than the retention).
+- **CI verification (T041) is still open**: `build-test`, `docker-build`, `sqlserver-tests` and `compose-smoke` have not been observed yet.
 - **No email verification** (carried from 024): only an account's own stored address ever receives a link, but a user can store a wrong address and then cannot recover by mail.
 - **Accounts without an email cannot reset by themselves**; there is no Admin reset in this feature.
 - **Other sessions' access tokens survive** until their `Jwt:ExpiryMinutes` (default 60); only refresh is revoked.

@@ -409,4 +409,12 @@ public class AccountTests : MvcTestBase
         Assert.Empty(Fake.Calls(HttpMethod.Post, "api/account/logout"));
         await AssertSignedOutAsync();
     }
+
+    [Fact]
+    public async Task Login_page_links_to_forgot_password()
+    {
+        var html = await GetHtmlAsync("/Account/Login");
+
+        Assert.Contains("href=\"/Account/ForgotPassword\"", html);
+    }
 }

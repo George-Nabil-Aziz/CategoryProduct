@@ -1,4 +1,5 @@
 using Serilog;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text;
 using CategoryProduct.API.Data;
@@ -76,6 +77,8 @@ var registerPermitLimit = builder.Configuration.GetValue("RateLimiting:RegisterP
 var logoutPermitLimit = builder.Configuration.GetValue("RateLimiting:LogoutPermitLimit", 30);
 var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPermitLimit", 30);
 var profilePermitLimit = builder.Configuration.GetValue("RateLimiting:ProfilePermitLimit", 30);
+var forgotPasswordPermitLimit = builder.Configuration.GetValue("RateLimiting:ForgotPasswordPermitLimit", 5);
+var passwordPermitLimit = builder.Configuration.GetValue("RateLimiting:PasswordPermitLimit", 5);
 builder.Services.Configure<CategoryProduct.API.Services.ProductImageOptions>(
     builder.Configuration.GetSection(CategoryProduct.API.Services.ProductImageOptions.SectionName));
 builder.Services.AddSingleton<CategoryProduct.API.Services.IProductImageStorage, CategoryProduct.API.Services.ProductImageStorage>();
@@ -85,6 +88,7 @@ builder.Services.AddScoped<CategoryProduct.API.Services.InventoryService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.TokenService>();
 builder.Services.AddScoped<CategoryProduct.API.Services.RefreshTokenCleanupService>();
 builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenCleanupWorker>();
+builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddEmailNotifications(builder.Configuration);
 builder.Services.AddScoped<CategoryProduct.API.Services.NotificationService>();
 builder.Services.AddRateLimiter(options =>
@@ -132,6 +136,24 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = logoutPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("forgot-password", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = forgotPasswordPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("password", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = passwordPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
