@@ -18,6 +18,8 @@ namespace CategoryProduct.MVC.Controllers
             var result = await _api.GetUsersAsync(Math.Max(page, 1), search: search);
             if (result.Unauthorized) return await SessionExpiredAsync();
             if (result.Forbidden) return RedirectToAction("AccessDenied", "Account");
+            if (result.TooManyRequests)
+                throw new HttpRequestException("Too many requests.", null, System.Net.HttpStatusCode.TooManyRequests);
             if (!result.Success) throw new HttpRequestException("Could not load users.");
             var users = result.Value!;
             ViewBag.Search = search;
@@ -36,6 +38,7 @@ namespace CategoryProduct.MVC.Controllers
             else if (result.Conflict != null) TempData["Error"] = result.Conflict;
             else if (result.Errors.Count > 0) TempData["Error"] = string.Join(" ", result.Errors.Values.SelectMany(v => v));
             else if (result.NotFound) TempData["Error"] = "User not found.";
+            else if (result.TooManyRequests) TempData["Error"] = ApiRateLimit.Message;
             else TempData["Error"] = "Could not change role.";
             return RedirectToAction(nameof(Index), new { page, search });
         }

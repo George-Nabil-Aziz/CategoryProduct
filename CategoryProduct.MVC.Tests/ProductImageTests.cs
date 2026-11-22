@@ -197,4 +197,30 @@ public class ProductImageTests : MvcTestBase
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         Assert.True(HtmlHelpers.HasText(await resp.Content.ReadAsStringAsync(), "Image conflict on remove."));
     }
+
+    // ---------- 429 (023-security-cleanup) ----------
+
+    [Fact]
+    public async Task Upload_api_429_shows_rate_limit_message()
+    {
+        await SignInAdminAsync();
+        ScriptProduct(1);
+        Fake.On(HttpMethod.Post, "api/product/1/image", FakeResponse.Status(429));
+        var resp = await PostMultipartAsync("/Products/UploadImage/1", new Dictionary<string, string>(),
+            "pic.png", "image/png", Png, tokenPageUrl: "/Products/Details/1");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.True(HtmlHelpers.HasText(await resp.Content.ReadAsStringAsync(), "Too many requests. Try again in a minute."));
+    }
+
+    [Fact]
+    public async Task Remove_api_429_shows_rate_limit_message()
+    {
+        await SignInAdminAsync();
+        ScriptProduct(1, imageUrl: "http://fake-api/i.png");
+        Fake.On(HttpMethod.Delete, "api/product/1/image", FakeResponse.Status(429));
+        var resp = await PostFormAsync("/Products/RemoveImage/1", new Dictionary<string, string>(),
+            tokenPageUrl: "/Products/Details/1");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.True(HtmlHelpers.HasText(await resp.Content.ReadAsStringAsync(), "Too many requests. Try again in a minute."));
+    }
 }

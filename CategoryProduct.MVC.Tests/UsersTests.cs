@@ -227,4 +227,33 @@ public class UsersTests : MvcTestBase
         Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
         Assert.Contains("Could not load users.", await resp.Content.ReadAsStringAsync());
     }
+
+    // ---------- 429 (023-security-cleanup) ----------
+
+    [Fact]
+    public async Task Index_api_429_shows_too_many_requests_page()
+    {
+        await SignInAdminAsync();
+        Fake.On(HttpMethod.Get, "api/users", FakeResponse.Status(429));
+        using var resp = await GetAsync("/Users");
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.TooManyRequests, resp.StatusCode);
+        Assert.True(HtmlHelpers.HasText(html, CategoryProduct.MVC.Services.ApiRateLimit.Message));
+        Assert.Contains("location.reload()", html);
+        Assert.False(HtmlHelpers.HasText(html, "HttpRequestException"));
+        Assert.False(HtmlHelpers.HasText(html, "Could not load users."));
+    }
+
+    [Fact]
+    public async Task ChangeRole_429_shows_rate_limit_message_and_keeps_paging()
+    {
+        await SignInAdminAsync();
+        ScriptUsers();
+        Fake.On(HttpMethod.Put, "api/users/1/role", FakeResponse.Status(429));
+        var resp = await ChangeRole();
+        Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
+        Assert.Equal("/Users?page=2&search=al", resp.Headers.Location!.OriginalString, ignoreCase: true);
+        var html = await GetHtmlAsync("/Users?page=2&search=al");
+        Assert.Equal("Too many requests. Try again in a minute.", HtmlHelpers.Alert(html, "danger"));
+    }
 }

@@ -51,4 +51,22 @@ namespace CategoryProduct.MVC.Services
             context.ExceptionHandled = true;
         }
     }
+
+    // Shows a friendly page when the API (or a gateway in front of it) answers 429 to a throwing read.
+    public class TooManyRequestsFilter : IExceptionFilter
+    {
+        public void OnException(ExceptionContext context)
+        {
+            if (context.Exception is not HttpRequestException { StatusCode: System.Net.HttpStatusCode.TooManyRequests }) return;
+            context.Result = new ViewResult
+            {
+                ViewName = "TooManyRequests",
+                StatusCode = StatusCodes.Status429TooManyRequests,
+                ViewData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(
+                    new Microsoft.AspNetCore.Mvc.ModelBinding.EmptyModelMetadataProvider(),
+                    context.ModelState) { ["Message"] = ApiRateLimit.Message }
+            };
+            context.ExceptionHandled = true;
+        }
+    }
 }

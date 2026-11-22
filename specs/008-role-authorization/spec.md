@@ -47,7 +47,7 @@ The MVC site only offers write actions to Admins and shows an Access Denied page
 ### Edge Cases
 
 - Cookies issued before this change carry no role claim; those users are treated as non-Admin (Access Denied on write URLs) and must sign in again to get write access.
-- Existing users default to the `User` role; the seeded `testuser` is set to `Admin` by the migration.
+- Existing users default to the `User` role; the seeded `testuser` is set to `Admin` by the migration. (Superseded by `023-security-cleanup`: the row is later neutralized.)
 - A role changed in the database only takes effect for new tokens/cookies (next login).
 - Role names are matched as the string `Admin`; `User` is the only other value in use.
 - The role is limited to 20 characters and is required.

@@ -43,7 +43,11 @@ builder.Services.AddHttpClient<CategoryProductApiClient>(c =>
     .AddHttpMessageHandler<TokenRefreshHandler>();
 
 // Add services to the container.
-builder.Services.AddControllersWithViews(o => o.Filters.Add<ApiUnavailableFilter>());
+builder.Services.AddControllersWithViews(o =>
+{
+    o.Filters.Add<ApiUnavailableFilter>();
+    o.Filters.Add<TooManyRequestsFilter>();
+});
 
 var app = builder.Build();
 var useHttpsRedirection = app.Configuration.GetValue("Hosting:UseHttpsRedirection", true);

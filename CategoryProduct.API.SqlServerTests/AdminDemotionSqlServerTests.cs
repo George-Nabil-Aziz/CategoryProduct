@@ -17,7 +17,7 @@ namespace CategoryProduct.API.SqlServerTests
         [Fact]
         public async Task ParallelDemotionOfOnlyTwoAdmins_LeavesAtLeastOneAdmin()
         {
-            // The migrations seed testuser as an Admin; remove it so exactly two admins exist.
+            // The migrations seed testuser (since NeutralizeSeededTestUser as a non-admin row that cannot sign in; the row may exist in either state); remove it so exactly two admins exist.
             await _f.WithDbAsync(async db =>
             {
                 var seeded = await db.Users.Where(u => u.UserName == "testuser").ToListAsync();

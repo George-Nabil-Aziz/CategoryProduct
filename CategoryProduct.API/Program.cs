@@ -156,6 +156,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 }).AllowAnonymous();
 
 await DatabaseMigrator.MigrateIfEnabledAsync(app.Services, app.Configuration, app.Logger);
+await BootstrapAdmin.EnsureIfConfiguredAsync(app.Services, app.Configuration, app.Logger);
 
 app.Run();
 

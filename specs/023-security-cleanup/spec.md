@@ -170,7 +170,12 @@ Older specs that list the seeded `testuser` or the missing 429 handling as open 
 
 ## Known Gaps
 
-- Not yet implemented; this section is completed in the final task (test counts, CI run, list of older Known Gaps marked fixed).
+- **Implemented locally; CI not yet run** (to be recorded after the user pushes, same style as 022; task T030 open).
+- **Final local facts**: `dotnet build CategoryProduct.slnx` and `dotnet build CategoryProduct.API.SqlServerTests` both finish with 0 errors. `dotnet test CategoryProduct.slnx` runs 560 tests, all passing on four consecutive full runs: 314 in `CategoryProduct.MVC.Tests` (302 before, 12 new) and 246 in `CategoryProduct.API.Tests` (212 before, 34 new: 30 `BootstrapAdminTests`, 4 `SeededTestUserMarkerTests`). Baseline before the change was 514 (302 MVC, 212 API).
+- **SQL Server neutralization test did NOT run locally**: no `SQLSERVER_TEST_CONNECTION` on this machine, so `SeededTestUserNeutralizationSqlServerTests` (4 tests) is only compiled here; it is verified by the CI job `sqlserver-tests`. The migration SQL itself is therefore untested against a real SQL Server until that run.
+- **Migration**: `20261122191115_NeutralizeSeededTestUser` generated with `dotnet ef migrations add`; the snapshot and the two original migrations are untouched; only the new file's `Up` has the `migrationBuilder.Sql` call, `Down` is a comment-only no-op. `dotnet ef database update` was not run.
+- **Older specs updated** (annotated "FIXED by `023-security-cleanup`", original text kept): `013` (first admin assumption), `016` (Assumptions risk and Known Gaps item), `020` (out-of-scope open item), `021` (compose smoke assumption note), `022` (Out of Scope and Known Gaps for `testuser` and for 429), `008` (quickstart and spec: short "superseded" notes).
+- **Deviation**: the work was done on `master` (no `023-security-cleanup` branch existed in this checkout) and nothing was committed.
 - **Access tokens already issued** to `testuser` stay valid until expiry (default 60 minutes); there is no revocation list.
 - **Databases where an operator changed the `testuser` password** keep that account and its role, by design.
 - **No password-change or reset feature**: the bootstrap password is the only credential until one exists; choose a strong value.

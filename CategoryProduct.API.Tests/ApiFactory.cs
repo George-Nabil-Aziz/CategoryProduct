@@ -36,6 +36,7 @@ namespace CategoryProduct.API.Tests
         protected virtual int LogoutPermitLimit => 1000;
         protected virtual int LowStockThreshold => 5;
         protected virtual int RefreshReuseGraceSeconds => 0;
+        protected virtual bool SeedAdmin => true;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -68,9 +69,12 @@ namespace CategoryProduct.API.Tests
                 using var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = new User { UserName = UserName, PasswordHash = "", Role = "Admin" };
-                user.PasswordHash = new PasswordHasher<User>().HashPassword(user, Password);
-                db.Users.Add(user);
+                if (SeedAdmin)
+                {
+                    var user = new User { UserName = UserName, PasswordHash = "", Role = "Admin" };
+                    user.PasswordHash = new PasswordHasher<User>().HashPassword(user, Password);
+                    db.Users.Add(user);
+                }
                 var plain = new User { UserName = PlainUserName, PasswordHash = "", Role = "User" };
                 plain.PasswordHash = new PasswordHasher<User>().HashPassword(plain, Password);
                 db.Users.Add(plain);

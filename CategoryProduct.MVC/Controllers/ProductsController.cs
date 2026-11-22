@@ -190,6 +190,8 @@ namespace CategoryProduct.MVC.Controllers
                 ModelState.AddModelError(string.Empty, "You don't have permission to make changes.");
             if (result.Conflict != null)
                 ModelState.AddModelError(string.Empty, result.Conflict);
+            if (result.TooManyRequests)
+                ModelState.AddModelError(string.Empty, ApiRateLimit.Message);
             foreach (var (field, messages) in result.Errors)
                 foreach (var m in messages)
                     ModelState.AddModelError(field, m);

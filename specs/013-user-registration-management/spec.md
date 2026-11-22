@@ -145,7 +145,7 @@ in); as admin open Users and change a role (see Known Gaps: not exercised in a b
   by migration `20261103173834_AddUserRole`).
 - New accounts always start as `User`; there is no way to self-select a role.
 - The first admin is created outside this feature (the earlier migration promotes the seeded
-  `testuser`; test fixtures seed their own admin).
+  `testuser`; test fixtures seed their own admin). Update (023): FIXED by `023-security-cleanup`: the seeded `testuser` is neutralized and the first Admin is created by the optional `Bootstrap:AdminUserName` / `Bootstrap:AdminPassword` settings when no Admin exists.
 - Case-insensitive username uniqueness at the database level relies on the SQL Server column
   collation; the application-level check is case-insensitive regardless.
 

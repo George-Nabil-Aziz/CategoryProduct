@@ -325,4 +325,43 @@ public class ProductsTests : MvcTestBase
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         Assert.Equal("The request conflicts with existing data.", HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
     }
+
+    // ---------- 429 (023-security-cleanup) ----------
+
+    private const string RateLimitText = "Too many requests. Try again in a minute.";
+
+    [Fact]
+    public async Task Create_post_api_429_shows_rate_limit_message()
+    {
+        await SignInAdminAsync();
+        ScriptCategories();
+        Fake.On(HttpMethod.Post, "api/product", FakeResponse.Status(429));
+        var resp = await PostFormAsync("/Products/Create", Form());
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(RateLimitText, HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
+    }
+
+    [Fact]
+    public async Task Edit_post_api_429_shows_rate_limit_message()
+    {
+        await SignInAdminAsync();
+        ScriptProduct(5);
+        Fake.On(HttpMethod.Put, "api/product/5", FakeResponse.Status(429));
+        var resp = await PostFormAsync("/Products/Edit/5", Form(id: 5));
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(RateLimitText, HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
+    }
+
+    [Fact]
+    public async Task Delete_post_api_429_shows_rate_limit_message()
+    {
+        await SignInAdminAsync();
+        ScriptProduct(5);
+        Fake.On(HttpMethod.Delete, "api/product/5", FakeResponse.Status(429));
+        var resp = await PostFormAsync("/Products/Delete/5", new Dictionary<string, string>());
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.True(HtmlHelpers.HasText(html, "Are you sure you want to delete this?"));
+        Assert.Equal(RateLimitText, HtmlHelpers.FieldError(html, ""));
+    }
 }

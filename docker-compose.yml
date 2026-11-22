@@ -27,6 +27,8 @@ services:
       Hosting__UseHttpsRedirection: "false"
       ProductImages__StoragePath: /data/product-images
       Inventory__LowStockThreshold: ${LOW_STOCK_THRESHOLD:-5}
+      Bootstrap__AdminUserName: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
     volumes:
       - productimages:/data/product-images
     ports:

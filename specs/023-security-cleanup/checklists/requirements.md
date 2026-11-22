@@ -21,14 +21,14 @@
 
 ## Feature Readiness
 
-- [ ] Every FR maps to a task in tasks.md (tick after review)
-- [ ] Every story has tests written before the change
+- [x] Every FR maps to a task in tasks.md (tick after review)
+- [x] Every story has tests written before the change
 - [x] Constitution Check passes (plan.md); Principle II judgement call in Complexity Tracking
 - [x] No schema change confirmed (data-model.md)
 - [x] Claims verified against code: only four `AccountController` actions have `[EnableRateLimiting]`; `api/users` and `api/product` do not; `testuser` appears only in two migrations, `AdminDemotionSqlServerTests` and specs; `AddUserRole` already uses `migrationBuilder.Sql`; FK behaviors (Orders Restrict, StockMovements SetNull, CartItems/RefreshTokens Cascade); `DatabaseMigrator` runs before `app.Run()` and skips non-relational providers; `ApiFactory` seeds Admin `tester`; `SqlServerTests` is not in `CategoryProduct.slnx`; registration rules; `UsersController` (MVC) and `ProductsController.AddErrors` have no 429 branch; Cart/Orders/Inventory use "Please try again later."
 - [x] Scratch-verified: `/w==` verifies as `Failed`, `!` throws `FormatException`; `Validator.TryValidateObject` does not enforce positional-record attributes
 - [x] Known Gaps list what stays open
-- [ ] Known Gaps of 013, 016, 020, 021, 022 updated (tasks Phase 6)
+- [x] Known Gaps of 013, 016, 020, 021, 022 updated (tasks Phase 6)
 
 ## Notes
 

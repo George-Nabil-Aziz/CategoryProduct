@@ -87,7 +87,7 @@ On every push and pull request, a workflow restores, builds in Release, and runs
 - `Jwt__Key` shorter than 32 characters: the API throws at startup (existing check in `CategoryProduct.API/Program.cs`) and the container exits; `.env.example` states the minimum.
 - Non-root user cannot write to `/app`: the Serilog file sink (`logs/...` in both `appsettings.json` files) would fail; the Dockerfiles pre-create a writable `/app/logs`.
 - Containers run as `Production`, so Swagger UI (Development only in `Program.cs`) is not exposed; use `/health`, MVC, or an HTTP client.
-- The migration `SeedTestUserForAuth` inserts a `testuser` row (hash committed in the migration) into any database that runs migrations, including the compose one. Pre-existing behavior; noted as a risk, not changed here.
+- The migration `SeedTestUserForAuth` inserts a `testuser` row (hash committed in the migration) into any database that runs migrations, including the compose one. Pre-existing behavior; noted as a risk, not changed here. FIXED by `023-security-cleanup`: migration `NeutralizeSeededTestUser` neutralizes the account; first Admin via `Bootstrap:*` settings.
 - MVC data-protection keys are not persisted: restarting the `mvc` container invalidates existing sign-in cookies. Accepted.
 
 ## Requirements *(mandatory)*
@@ -148,4 +148,4 @@ No persisted entities are added or changed. See `data-model.md` for configuratio
 - CLOSED by `020-hardening-followups` US4 (optional `DataProtection:KeysPath` plus `mvckeys` volume; NOT verified on Docker). The new `sqlserver-tests` CI job from 020 is also unverified until its first run. Original gap: the MVC container does not persist ASP.NET Core Data Protection keys, so auth cookies become
   invalid when the `mvc` container is recreated (users sign in again). Found in Review.
 - Migration `SeedTestUserForAuth` seeds its test user into the compose database too; change or
-  remove that user's password before exposing the stack. Found in Review.
+  remove that user's password before exposing the stack. Found in Review. FIXED by `023-security-cleanup`: the user is neutralized (unusable password, role User) and the compose passes optional `BOOTSTRAP_ADMIN_*` for the first Admin.

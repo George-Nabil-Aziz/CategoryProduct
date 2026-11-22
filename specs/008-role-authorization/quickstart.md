@@ -10,7 +10,7 @@
   ```
   dotnet ef database update --project CategoryProduct.API
   ```
-- Two accounts: an Admin (the seeded `testuser`, if it exists in your database) and a non-Admin (any other user, whose `Role` is `User` by default). There is no UI at this commit to change roles; a role is changed directly in the `Users` table and applies at the user's next login.
+- Two accounts: an Admin (the seeded `testuser`, if it exists in your database) and a non-Admin (any other user, whose `Role` is `User` by default). There is no UI at this commit to change roles; a role is changed directly in the `Users` table and applies at the user's next login. (Superseded by `023-security-cleanup`: `testuser` is now neutralized and cannot sign in; create the first Admin with `Bootstrap:AdminUserName` / `Bootstrap:AdminPassword`.)
 - Run the API (`dotnet run --project CategoryProduct.API`) and, for MVC checks, the site (`dotnet run --project CategoryProduct.MVC`) over HTTPS.
 
 ## Automated

@@ -147,10 +147,10 @@ On logout the MVC sends the current access token as bearer in addition to the re
 
 ## Out of Scope
 
-- **The seeded `testuser`** (an API migration seeds a known-password user; see the 021 spec Assumptions): intentionally NOT touched here; it stays an open Known Gap of its original spec.
+- **The seeded `testuser`** (an API migration seeds a known-password user; see the 021 spec Assumptions): intentionally NOT touched here; it stays an open Known Gap of its original spec. FIXED by `023-security-cleanup`: migration `NeutralizeSeededTestUser`; first Admin via `Bootstrap:*`.
 - Changing the API logout endpoint to require authentication (this feature only prepares the MVC side).
 - Making the API ignore or validate the logout bearer.
-- Handling 429 on the Users and Products pages (see Known Gaps).
+- Handling 429 on the Users and Products pages (see Known Gaps). FIXED by `023-security-cleanup` (see Known Gaps).
 - A custom 404/403 status page (`UseStatusCodePages`), localization, logging dashboards.
 - A browser-level check of the error page; tests assert server-rendered HTML only.
 
@@ -175,8 +175,8 @@ On logout the MVC sends the current access token as bearer in addition to the re
 - Defects 1-4 are fixed by the code changes of this feature; CI is green (see above, task T031 done).
 - **Final local facts**: `dotnet build CategoryProduct.slnx` has 0 warnings and 0 errors. `dotnet test CategoryProduct.slnx` runs 514 tests, all passing: 302 in `CategoryProduct.MVC.Tests` (278 before, 24 net new) and 212 in `CategoryProduct.API.Tests` (unchanged). The five Products 409 tests (create, edit, delete, upload, remove image) failed on 7 cases with the `AddErrors` branch removed, so they detect the defect. Repeated full runs: 4 green, 6 further green, plus 25+ green MVC-only runs; one MVC run in an early repeat batch failed one test that could not be identified or reproduced afterwards (about 1 in 40 runs observed, output was not captured) and is recorded here as an open flakiness note.
 - **Deviations found while implementing**: (a) `HomeController.Index` and the error-page link resolve to `/` (default route `Categories/Index`), so the tests assert Location `/` and `<a href="/">Back to Categories</a>` instead of `/Categories`. (b) A Users API 404 under the Development test host ends as the developer exception page (HTTP 500, text "Could not load users."), not as an exception thrown through the test client, so the test asserts status 500 plus that text. (c) The xunit double-fixture assumption (research R7) held: `ErrorPageTests : MvcTestBase, IClassFixture<ProductionMvcFactory>` works, no fallback was needed.
-- **Seeded `testuser`**: still seeded by an API migration (see Out of Scope); a candidate for its own follow-up feature.
-- **429 on Users and Products**: `UsersController` and `ProductsController` do not translate `TooManyRequests` into a message; a throttled call shows the generic failure text or, for the Users list, an exception page. Not part of the four defects.
+- **Seeded `testuser`**: still seeded by an API migration (see Out of Scope); a candidate for its own follow-up feature. FIXED by `023-security-cleanup` (neutralized, not deleted).
+- **429 on Users and Products**: `UsersController` and `ProductsController` do not translate `TooManyRequests` into a message; a throttled call shows the generic failure text or, for the Users list, an exception page. Not part of the four defects. FIXED by `023-security-cleanup`: `TooManyRequestsFilter` plus 429 branches in `UsersController` and `ProductsController`; note the API never rate-limits `api/users` or `api/product`, so this is defensive.
 - **POST `returnUrl` after session expiry** in `CartController`, `OrdersController` and the `ProductsController` image actions is the POST path (for example `/Cart/Add`), which has no GET and 404s after login. Only `UsersController.ChangeRole` is built correctly here; the others are left as they are.
 - **Error page under Development** is unchanged: no handler is registered, so developers still see the raw exception (by design).
 - **A direct visit to `/Home/Error` answers 500** with the error page; it is not linked anywhere.
