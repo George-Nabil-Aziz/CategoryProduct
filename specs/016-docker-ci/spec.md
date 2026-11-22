@@ -145,7 +145,7 @@ No persisted entities are added or changed. See `data-model.md` for configuratio
 - No YAML parser was available locally (no Python, no installed node YAML module); `docker-compose.yml` and `ci.yml` were validated by manual review only.
 - The constitution's Technology Stack section says MVC has its own EF Core + SQL Server data access, but `CategoryProduct.MVC.csproj` references only Serilog and MVC calls the API over HTTP; compose therefore gives MVC no database connection. The constitution text is outdated; amending it is out of scope.
 - The `api` and `mvc` containers have no healthcheck (see Assumptions).
-- The MVC container does not persist ASP.NET Core Data Protection keys, so auth cookies become
+- CLOSED by `020-hardening-followups` US4 (optional `DataProtection:KeysPath` plus `mvckeys` volume; NOT verified on Docker). The new `sqlserver-tests` CI job from 020 is also unverified until its first run. Original gap: the MVC container does not persist ASP.NET Core Data Protection keys, so auth cookies become
   invalid when the `mvc` container is recreated (users sign in again). Found in Review.
 - Migration `SeedTestUserForAuth` seeds its test user into the compose database too; change or
   remove that user's password before exposing the stack. Found in Review.

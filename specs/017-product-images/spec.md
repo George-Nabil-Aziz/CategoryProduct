@@ -156,3 +156,4 @@ On the product Details page (and as a thumbnail in the product list) visitors se
 - Files are local to one API instance; running several API replicas needs shared storage (out of scope).
 - Orphan files caused by a crash between writing a file and saving the database row are not garbage-collected.
 - The MVC pages (Details upload/remove, Index thumbnails, `Products/Image/{id}` proxy) and the Docker volume persistence were not verified in a browser or in Docker during implementation (quickstart steps 8 and 9, task T034); they compile and the API side is covered by integration tests.
+- Image endpoint concurrency: `POST`/`DELETE api/product/{id}/image` now return `409` on a concurrency conflict instead of `500` (`020-hardening-followups` US3); the other gaps above remain.

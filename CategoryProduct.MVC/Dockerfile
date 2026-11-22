@@ -11,5 +11,6 @@ ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 RUN mkdir -p /app/logs && chown -R $APP_UID /app/logs
 COPY --from=build --chown=$APP_UID /app/publish .
+RUN mkdir -p /data/dp-keys && chown $APP_UID /data/dp-keys
 USER $APP_UID
 ENTRYPOINT ["dotnet", "CategoryProduct.MVC.dll"]

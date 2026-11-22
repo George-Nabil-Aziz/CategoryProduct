@@ -313,6 +313,11 @@ namespace CategoryProduct.API.Controllers
             {
                 await _context.SaveChangesAsync(CancellationToken.None);
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                _storage.Delete(newFileName);
+                return ConcurrencyConflict();
+            }
             catch
             {
                 _storage.Delete(newFileName);
@@ -335,7 +340,8 @@ namespace CategoryProduct.API.Controllers
             {
                 var fileName = product.ImageFileName;
                 product.ImageFileName = null;
-                await _context.SaveChangesAsync();
+                try { await _context.SaveChangesAsync(); }
+                catch (DbUpdateConcurrencyException) { return ConcurrencyConflict(); }
                 _storage.Delete(fileName);
             }
 

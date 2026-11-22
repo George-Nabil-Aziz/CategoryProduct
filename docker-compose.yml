@@ -43,9 +43,13 @@ services:
       Api__BaseUrl: "http://api:8080/"
       Hosting__UseHttpsRedirection: "false"
       Cookie__SecurePolicy: "SameAsRequest"
+      DataProtection__KeysPath: /data/dp-keys
+    volumes:
+      - mvckeys:/data/dp-keys
     ports:
       - "${MVC_HOST_PORT:-5256}:8080"
 
 volumes:
   sqldata:
   productimages:
+  mvckeys:

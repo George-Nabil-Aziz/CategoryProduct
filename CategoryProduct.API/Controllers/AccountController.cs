@@ -15,11 +15,13 @@ namespace CategoryProduct.API.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly TokenService _tokens;
+        private readonly IConfiguration _configuration;
 
-        public AccountController(ApplicationDbContext context, TokenService tokens)
+        public AccountController(ApplicationDbContext context, TokenService tokens, IConfiguration configuration)
         {
             _context = context;
             _tokens = tokens;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -74,6 +76,11 @@ namespace CategoryProduct.API.Controllers
             var now = DateTime.UtcNow;
             if (stored.RevokedAtUtc != null)
             {
+                var grace = _configuration.GetValue<int?>("Jwt:RefreshReuseGraceSeconds") ?? 10;
+                if (grace > 0 && stored.ReplacedByTokenHash != null
+                    && now - stored.RevokedAtUtc.Value < TimeSpan.FromSeconds(grace))
+                    return Unauthorized();
+
                 var active = await _context.RefreshTokens
                     .Where(r => r.UserId == stored.UserId && r.FamilyId == stored.FamilyId && r.RevokedAtUtc == null)
                     .ToListAsync();
