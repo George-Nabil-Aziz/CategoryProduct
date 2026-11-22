@@ -204,6 +204,7 @@ The spec's Known Gaps carry the final facts (test counts, CI run, what stays ope
 - **Tests**: `ApiFactory` replaces `IEmailSender` with a recording sender and sets `Email:Enabled=true`; the real queue and worker run, so the whole path (controller, notification, queue, worker, sender) is covered.
 
 ## Known Gaps
+- **CI verified**: the run for commit `744220b` passed all four jobs (`build-test`, `docker-build`, `sqlserver-tests`, `compose-smoke`) on 2026-11-22. The first run (`63a5203`) failed `sqlserver-tests`: two 023 neutralization tests read full `User` entities on an older schema (no `Email` column) and the new index test counted the migration-seeded `testuser`; both were test-only fixes, also verified locally on LocalDB (20/20).
 
 - **Implemented** (T001-T037 done locally; T038 open). Migration `20261122193648_AddUserEmail` (generated with `dotnet ef migrations add AddUserEmail --project CategoryProduct.API`; adds `Users.Email nvarchar(254) NULL` and filtered unique index `IX_Users_Email`; `Down` reverses both; no existing migration edited). `dotnet ef database update` was never run.
 - **Final local verification**: `dotnet build CategoryProduct.slnx` 0 errors (6 warnings, all pre-existing, none in touched files); `dotnet build CategoryProduct.API.SqlServerTests` 0 errors. `dotnet test CategoryProduct.slnx` green four runs in a row: 703 tests each (MVC 337, API 366), up from the 560 baseline (314 + 246); no failures in any run.

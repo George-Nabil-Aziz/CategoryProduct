@@ -115,7 +115,7 @@ description: "Task list for 024-email-notifications"
 - [X] T035 Run `dotnet build CategoryProduct.slnx` (0 errors, no new warnings in touched files) and `dotnet build CategoryProduct.API.SqlServerTests`.
 - [X] T036 Run `dotnet test CategoryProduct.slnx` THREE times in a row; all green each time; record the test counts (more than the 560 baseline).
 - [X] T037 Complete `specs/024-email-notifications/spec.md` Known Gaps with the final facts (test counts, whether the SQL Server test ran locally or only on CI, migration name, deviations) and tick `checklists/requirements.md`.
-- [ ] T038 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new index test) and `compose-smoke` are green and record the run in Known Gaps.
+- [X] T038 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new index test) and `compose-smoke` are green and record the run in Known Gaps.
 
 ---
 
