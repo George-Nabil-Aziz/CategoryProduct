@@ -11,9 +11,20 @@ namespace CategoryProduct.API.Tests
 {
     public class RefreshTokenCleanupWorkerTests
     {
+        private sealed class SignalingTimeProvider(DateTimeOffset start) : FakeTimeProvider(start)
+        {
+            public TaskCompletionSource TimerCreated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+            {
+                var t = base.CreateTimer(callback, state, dueTime, period);
+                TimerCreated.TrySetResult();
+                return t;
+            }
+        }
+
         private sealed class Harness : IAsyncDisposable
         {
-            public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
+            public SignalingTimeProvider Time { get; } = new(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
             public ServiceProvider Provider { get; }
             public RefreshTokenCleanupWorker Worker { get; }
             public int ScopeCalls;
@@ -65,7 +76,7 @@ namespace CategoryProduct.API.Tests
             public async Task StartAsync(CancellationToken token)
             {
                 await Worker.StartAsync(token);
-                await Task.Delay(100); // let ExecuteAsync create its PeriodicTimer before time is advanced
+                await Time.TimerCreated.Task.WaitAsync(TimeSpan.FromSeconds(10)); // wait until ExecuteAsync registered its PeriodicTimer
             }
 
             public Task SeedOldAsync(string hash) => SeedAsync(hash, 30, -20);
@@ -89,13 +100,13 @@ namespace CategoryProduct.API.Tests
 
         private static async Task WaitUntilAsync(Func<Task<bool>> condition)
         {
-            var deadline = DateTime.UtcNow.AddSeconds(5);
+            var deadline = DateTime.UtcNow.AddSeconds(10);
             while (DateTime.UtcNow < deadline)
             {
                 if (await condition()) return;
-                await Task.Delay(10);
+                await Task.Delay(20);
             }
-            Assert.True(await condition(), "Condition not met within 5 seconds");
+            Assert.True(await condition(), "Condition not met within 10 seconds");
         }
 
         [Fact]
@@ -180,7 +191,7 @@ namespace CategoryProduct.API.Tests
 
             var stop = h.Worker.StopAsync(CancellationToken.None);
 
-            Assert.Same(stop, await Task.WhenAny(stop, Task.Delay(TimeSpan.FromSeconds(5))));
+            Assert.Same(stop, await Task.WhenAny(stop, Task.Delay(TimeSpan.FromSeconds(10))));
             await stop;
         }
 

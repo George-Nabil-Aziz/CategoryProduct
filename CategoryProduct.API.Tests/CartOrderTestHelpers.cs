@@ -97,6 +97,8 @@ namespace CategoryProduct.API.Tests
         public OrderStatus? RaceStatus;
         /// <summary>User name whose cart is checked out by a racing request that commits first (null = none).</summary>
         public string? RacingCheckoutUserName;
+        /// <summary>Order cancelled completely (stock restored, movements, status) by a racing request that commits first (0 = none).</summary>
+        public int RacingCancelOrderId;
 
         public void Arm(int times)
         {
@@ -111,6 +113,7 @@ namespace CategoryProduct.API.Tests
             StockDelta = 100;
             RaceStatus = null;
             RacingCheckoutUserName = null;
+            RacingCancelOrderId = 0;
         }
 
         public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -139,6 +142,21 @@ namespace CategoryProduct.API.Tests
                 var o = await other.Orders.SingleAsync(x => x.Id == id, cancellationToken);
                 o.Status = RaceStatus.Value;
                 o.ConcurrencyStamp = Guid.NewGuid();
+            }
+            if (RacingCancelOrderId != 0)
+            {
+                var o = await other.Orders.Include(x => x.Items).SingleAsync(x => x.Id == RacingCancelOrderId, cancellationToken);
+                o.Status = OrderStatus.Cancelled;
+                o.ConcurrencyStamp = Guid.NewGuid();
+                foreach (var i in o.Items.Where(i => i.ProductId != null))
+                {
+                    var p = await other.Products.SingleAsync(x => x.Id == i.ProductId, cancellationToken);
+                    p.Quantity += i.Quantity;
+                    p.ConcurrencyStamp = Guid.NewGuid();
+                    other.StockMovements.Add(new StockMovement { ProductId = p.Id, QuantityChange = i.Quantity,
+                        QuantityAfter = p.Quantity, Reason = StockMovementReason.OrderCancelled,
+                        Note = $"Order #{o.Id} cancelled", CreatedAtUtc = DateTime.UtcNow });
+                }
             }
             if (RacingCheckoutUserName != null)
             {

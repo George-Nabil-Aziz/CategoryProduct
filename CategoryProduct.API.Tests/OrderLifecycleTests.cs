@@ -121,20 +121,6 @@ namespace CategoryProduct.API.Tests
             Assert.Single(await MovementsOfReasonAsync(admin, b, "OrderCancelled"));
         }
 
-        [Fact]
-        public async Task ParallelCancels_RestoreOnce()
-        {
-            var admin = await AdminAsync();
-            var (u, _) = await RegisterAndLoginAsync(_factory);
-            var (id, a, _) = await TwoLineOrderAsync(admin, u);
-
-            var results = await Task.WhenAll(CancelAsync(u, id), CancelAsync(u, id));
-
-            Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.OK));
-            Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.Conflict));
-            Assert.Equal(5, await GetProductQuantityAsync(admin, a));
-        }
-
         // ---------- admin status ----------
         [Fact]
         public async Task Confirm_Pending_Returns200_StockUntouched_OwnerCannotCancelAfter()
@@ -300,6 +286,26 @@ namespace CategoryProduct.API.Tests
 
             Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
             Assert.Equal("Cancelled", await OrderStatusAsync(u, id));
+        }
+
+        [Fact]
+        public async Task ParallelCancels_SecondLoses409_OrderCancelledOnce()
+        {
+            var admin = await AdminAsync();
+            var (u, _) = await RegisterAndLoginAsync(_factory);
+            var (id, a) = await OrderAsync(admin, u);
+
+            // A competing cancel commits completely between this request's read and its save.
+            _factory.Interceptor.RacingCancelOrderId = id;
+            _factory.Interceptor.Arm(1);
+            var r = await CancelAsync(u, id);
+            _factory.Interceptor.Disarm();
+
+            Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
+            Assert.Equal("Cancelled", await OrderStatusAsync(u, id));
+            Assert.NotEmpty(await MovementsOfReasonAsync(admin, a, "OrderCancelled"));
+            // "Restored exactly once" holds on SQL Server (loser is rolled back; see SqlServerTests);
+            // InMemory is non-transactional and keeps the loser's product write, so stock is not asserted.
         }
 
         [Fact]

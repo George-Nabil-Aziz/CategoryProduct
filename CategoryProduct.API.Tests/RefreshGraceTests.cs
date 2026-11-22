@@ -11,7 +11,7 @@ namespace CategoryProduct.API.Tests
 {
     public class GraceFactory : ApiFactory
     {
-        protected override int RefreshReuseGraceSeconds => 10;
+        protected override int RefreshReuseGraceSeconds => 300; // generous so a slow CI machine cannot push "inside grace" tests past the window
     }
 
     public class GraceKeyAbsentFactory : ApiFactory
@@ -85,7 +85,7 @@ namespace CategoryProduct.API.Tests
         {
             var l = await GraceHelper.LoginAsync(_f);
             var n = (await (await GraceHelper.RefreshAsync(_f, l.RefreshToken)).Content.ReadFromJsonAsync<LoginResponseDto>())!;
-            await GraceHelper.BackdateRevocationAsync(_f, l.RefreshToken, TimeSpan.FromSeconds(11));
+            await GraceHelper.BackdateRevocationAsync(_f, l.RefreshToken, TimeSpan.FromSeconds(301));
 
             Assert.Equal(HttpStatusCode.Unauthorized, (await GraceHelper.RefreshAsync(_f, l.RefreshToken)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await GraceHelper.RefreshAsync(_f, n.RefreshToken)).StatusCode);
