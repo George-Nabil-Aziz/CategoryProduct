@@ -195,6 +195,9 @@ namespace CategoryProduct.MVC.Services
         public Task<ApiResult<OrderModel>> CancelOrderAsync(int id) =>
             SendAsync<OrderModel>(HttpMethod.Post, $"api/orders/{id}/cancel");
 
+        public Task<ApiResult<PaymentModel>> PayOrderAsync(int id, string paymentToken, string idempotencyKey) =>
+            SendAsync<PaymentModel>(HttpMethod.Post, $"api/orders/{id}/pay", new PayOrderRequest(paymentToken, idempotencyKey));
+
         public Task<ApiResult<OrderModel>> SetOrderStatusAsync(int id, string status) =>
             SendAsync<OrderModel>(HttpMethod.Put, $"api/orders/{id}/status", new UpdateOrderStatusRequest(status));
 
@@ -223,6 +226,14 @@ namespace CategoryProduct.MVC.Services
             if (response.StatusCode == HttpStatusCode.Forbidden) return new ApiResult<T> { Forbidden = true };
             if (response.StatusCode == HttpStatusCode.TooManyRequests) return new ApiResult<T> { TooManyRequests = true };
             if (response.StatusCode == HttpStatusCode.Unauthorized) return new ApiResult<T> { Unauthorized = true };
+
+            if (response.StatusCode == HttpStatusCode.PaymentRequired)
+            {
+                string? detail = null;
+                try { detail = (await response.Content.ReadFromJsonAsync<ConflictProblem>())?.Detail; }
+                catch (JsonException) { }
+                return new ApiResult<T> { Declined = detail ?? "Payment declined." };
+            }
 
             if (response.StatusCode == HttpStatusCode.Conflict)
             {

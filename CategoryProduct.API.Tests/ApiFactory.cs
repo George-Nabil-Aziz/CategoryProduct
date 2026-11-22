@@ -29,6 +29,9 @@ namespace CategoryProduct.API.Tests
 
         public RecordingEmailSender Emails { get; } = new();
 
+        /// <summary>Counts charge/refund calls of the (fake) payment gateway; tests may reset it.</summary>
+        public CountingPaymentGateway Gateway { get; } = new(new FakePaymentGateway());
+
         public EmailQueue EmailQueue => Services.GetRequiredService<EmailQueue>();
 
         /// <summary>Controls the TimeProvider used by the password reset code (starts at real UTC now).</summary>
@@ -51,11 +54,15 @@ namespace CategoryProduct.API.Tests
         protected virtual int LogoutPermitLimit => 1000;
         protected virtual int ForgotPasswordPermitLimit => 1000;
         protected virtual int PasswordPermitLimit => 1000;
+        protected virtual int PaymentsPermitLimit => 1000;
         protected virtual bool EmailEnabled => true;
         protected virtual string PublicMvcBaseUrl => "https://mvc.test";
         protected virtual int LowStockThreshold => 5;
         protected virtual int RefreshReuseGraceSeconds => 0;
         protected virtual bool SeedAdmin => true;
+
+        /// <summary>Hook for a test factory to replace the payment gateway (default: the counting fake in <see cref="Gateway"/>).</summary>
+        protected virtual void ConfigureGateway(IServiceCollection services) { }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -73,6 +80,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("RateLimiting:ProfilePermitLimit", "1000");
             builder.UseSetting("RateLimiting:ForgotPasswordPermitLimit", ForgotPasswordPermitLimit.ToString());
             builder.UseSetting("RateLimiting:PasswordPermitLimit", PasswordPermitLimit.ToString());
+            builder.UseSetting("RateLimiting:PaymentsPermitLimit", PaymentsPermitLimit.ToString());
             builder.UseSetting("App:PublicMvcBaseUrl", PublicMvcBaseUrl);
             builder.UseSetting("Email:Enabled", EmailEnabled ? "true" : "false");
             builder.UseSetting("Email:PickupDirectory", EmailPickupPath);
@@ -93,6 +101,10 @@ namespace CategoryProduct.API.Tests
 
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(Clock);
+
+                services.RemoveAll<IPaymentGateway>();
+                services.AddSingleton<IPaymentGateway>(Gateway);
+                ConfigureGateway(services);
 
                 services.RemoveAll<IEmailSender>();
                 services.AddSingleton<IEmailSender>(Emails);

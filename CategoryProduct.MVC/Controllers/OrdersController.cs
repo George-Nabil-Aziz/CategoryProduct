@@ -47,6 +47,27 @@ namespace CategoryProduct.MVC.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        [HttpPost("Orders/{id:int}/Pay")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Pay(int id, string? paymentToken, string? idempotencyKey)
+        {
+            ApiResult<PaymentModel> result;
+            try
+            {
+                result = await _api.PayOrderAsync(id, paymentToken ?? string.Empty, idempotencyKey ?? string.Empty);
+            }
+            catch (ApiUnavailableException)
+            {
+                // The API answered 5xx (for example 502 "Payment provider error") or could not be reached.
+                TempData["Error"] = "The payment could not be completed because the payment service is unavailable. Please try again later.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            if (result.Unauthorized) return await SessionExpiredAsync();
+            if (result.Success) TempData["Success"] = "Payment received.";
+            else TempData["Error"] = ErrorMessage(result, "Could not process the payment.");
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         [HttpGet("Orders/Manage")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Manage(int page = 1, string? status = null)
@@ -76,6 +97,7 @@ namespace CategoryProduct.MVC.Controllers
 
         private static string ErrorMessage(ApiResult result, string fallback)
         {
+            if (result.Declined != null) return result.Declined;
             if (result.Conflict != null) return result.Conflict;
             if (result.Errors.Count > 0) return string.Join(" ", result.Errors.Values.SelectMany(v => v));
             if (result.NotFound) return "Order not found.";

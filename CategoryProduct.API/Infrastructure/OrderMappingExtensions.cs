@@ -10,7 +10,8 @@ namespace CategoryProduct.API.Infrastructure
                 order.CreatedAtUtc, order.UpdatedAtUtc,
                 order.Items.OrderBy(i => i.Id)
                     .Select(i => new OrderItemResponseDto(i.Id, i.ProductId, i.ProductName, i.UnitPrice, i.Quantity, i.LineTotal))
-                    .ToList());
+                    .ToList(),
+                order.PaymentStatus.ToString());
 
         public static CartResponseDto BuildCart(IEnumerable<CartItemResponseDto> items)
         {

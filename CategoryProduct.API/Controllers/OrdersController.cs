@@ -6,6 +6,7 @@ using CategoryProduct.API.Models;
 using CategoryProduct.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace CategoryProduct.API.Controllers
@@ -19,14 +20,17 @@ namespace CategoryProduct.API.Controllers
         private readonly ApplicationDbContext _context;
         private readonly InventoryService _inventory;
         private readonly NotificationService _notifications;
+        private readonly PaymentService _payments;
         private readonly ILogger<OrdersController> _logger;
 
         public OrdersController(ApplicationDbContext context, InventoryService inventory, NotificationService notifications,
+            PaymentService payments,
             ILogger<OrdersController> logger)
         {
             _context = context;
             _inventory = inventory;
             _notifications = notifications;
+            _payments = payments;
             _logger = logger;
         }
 
@@ -150,9 +154,18 @@ namespace CategoryProduct.API.Controllers
         [HttpGet("all")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PagedResponseDto<OrderSummaryDto>>> GetAll(string? status = null,
-            int page = 1, int pageSize = 10)
+            int page = 1, int pageSize = 10, string? paymentStatus = null)
         {
             var query = _context.Orders.AsNoTracking();
+            if (paymentStatus != null)
+            {
+                if (!OrderPaymentStatusExtensions.TryParseName(paymentStatus, out var parsedPayment))
+                {
+                    ModelState.AddModelError("PaymentStatus", "PaymentStatus must be Unpaid, Paid or Refunded.");
+                    return ValidationProblem(ModelState);
+                }
+                query = query.Where(o => o.PaymentStatus == parsedPayment);
+            }
             if (status != null)
             {
                 if (!OrderStatusExtensions.TryParseName(status, out var parsed))
@@ -173,7 +186,7 @@ namespace CategoryProduct.API.Controllers
             var items = await query.OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.Id)
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(o => new OrderSummaryDto(o.Id, o.UserId, o.User!.UserName, o.Status.ToString(), o.Total,
-                    o.Items.Count, o.CreatedAtUtc, o.UpdatedAtUtc))
+                    o.Items.Count, o.CreatedAtUtc, o.UpdatedAtUtc, o.PaymentStatus.ToString()))
                 .ToListAsync();
             return new PagedResponseDto<OrderSummaryDto>(items, page, pageSize, total,
                 (int)Math.Ceiling(total / (double)pageSize));
@@ -191,13 +204,80 @@ namespace CategoryProduct.API.Controllers
             return order.ToResponse();
         }
 
-        // ---------- Cancel ----------
-        private enum CancelStatus { Ok, NotFound, Conflict }
+        // ---------- Payments ----------
+        [HttpPost("{id:int}/pay")]
+        [EnableRateLimiting("payments")]
+        public async Task<IActionResult> Pay(int id, PayOrderRequestDto request)
+        {
+            if (CurrentUserId() is not int callerId) return Unauthorized();
 
-        private record CancelResult(CancelStatus Status, Order? Order, string? Detail);
+            if (!PaymentTokenRules.TryNormalizeToken(request.PaymentToken, out var token, out var tokenError))
+                ModelState.AddModelError("PaymentToken", tokenError);
+            if (!PaymentTokenRules.TryNormalizeKey(request.IdempotencyKey, out var key, out var keyError))
+                ModelState.AddModelError("IdempotencyKey", keyError);
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            var result = await _payments.PayAsync(id, callerId, token, key, HttpContext.RequestAborted);
+            switch (result.Outcome)
+            {
+                case PayOutcome.Succeeded:
+                    return Ok(result.Payment!.ToResponse());
+                case PayOutcome.NotFound:
+                    return NotFound();
+                case PayOutcome.Declined:
+                {
+                    var reason = result.Payment!.FailureReason ?? "declined";
+                    var problem = new ProblemDetails
+                    {
+                        Status = 402,
+                        Title = "Payment declined",
+                        Detail = $"Payment declined: {reason}."
+                    };
+                    problem.Extensions["paymentId"] = result.Payment.Id;
+                    problem.Extensions["reason"] = reason;
+                    return StatusCode(402, problem);
+                }
+                case PayOutcome.ProviderError:
+                    return ProviderErrorProblem();
+                default:
+                    return ConflictProblem(result.Detail ?? PaymentService.InProgressDetail);
+            }
+        }
+
+        private ObjectResult ProviderErrorProblem() =>
+            StatusCode(502, new ProblemDetails
+            {
+                Status = 502,
+                Title = "Payment provider error",
+                Detail = "The payment provider could not complete the request. Please try again later."
+            });
+
+        [HttpGet("{id:int}/payments")]
+        public async Task<ActionResult<PagedResponseDto<PaymentResponseDto>>> GetPayments(int id, int page = 1, int pageSize = 10)
+        {
+            if (CurrentUserId() is not int callerId) return Unauthorized();
+            var ownerId = await _context.Orders.AsNoTracking().Where(o => o.Id == id)
+                .Select(o => (int?)o.UserId).FirstOrDefaultAsync();
+            if (ownerId == null || (ownerId != callerId && !User.IsInRole("Admin"))) return NotFound();
+
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+            var query = _context.Payments.AsNoTracking().Where(p => p.OrderId == id);
+            var total = await query.CountAsync();
+            var items = await query.OrderByDescending(p => p.CreatedAtUtc).ThenByDescending(p => p.Id)
+                .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            return new PagedResponseDto<PaymentResponseDto>(items.Select(p => p.ToResponse()).ToList(), page, pageSize,
+                total, (int)Math.Ceiling(total / (double)pageSize));
+        }
+
+        // ---------- Cancel ----------
+        private enum CancelStatus { Ok, NotFound, Conflict, ProviderError }
+
+        private record CancelResult(CancelStatus Status, Order? Order, string? Detail, Payment? RefundedPayment = null);
 
         private async Task<CancelResult> CancelCoreAsync(int orderId, int callerId, bool isAdmin)
         {
+            RefundStepResult? refund = null;
             for (var attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 _context.ChangeTracker.Clear();
@@ -208,6 +288,13 @@ namespace CategoryProduct.API.Controllers
                     return new CancelResult(CancelStatus.NotFound, null, null);
                 if (order.Status != OrderStatus.Pending)
                     return new CancelResult(CancelStatus.Conflict, null, "Only a Pending order can be cancelled.");
+
+                // Refund first (idempotent per payment); memoized so a retried save never calls the gateway again.
+                refund ??= await _payments.RefundForCancelAsync(orderId);
+                if (refund.Outcome == RefundOutcome.InProgress)
+                    return new CancelResult(CancelStatus.Conflict, null, PaymentService.CancelInProgressDetail);
+                if (refund.Outcome == RefundOutcome.ProviderError)
+                    return new CancelResult(CancelStatus.ProviderError, null, null);
 
                 var transaction = _context.Database.IsRelational()
                     ? await _context.Database.BeginTransactionAsync()
@@ -246,9 +333,16 @@ namespace CategoryProduct.API.Controllers
                     order.UpdatedAtUtc = DateTime.UtcNow;
                     order.ConcurrencyStamp = Guid.NewGuid();
 
+                    Payment? refunded = null;
+                    if (refund.Outcome == RefundOutcome.Refunded)
+                    {
+                        refunded = await _context.Payments.FirstOrDefaultAsync(p => p.Id == refund.PaymentId);
+                        if (refunded != null) PaymentService.MarkRefunded(refunded, order);
+                    }
+
                     await _context.SaveChangesAsync();
                     if (transaction != null) await transaction.CommitAsync();
-                    return new CancelResult(CancelStatus.Ok, order, null);
+                    return new CancelResult(CancelStatus.Ok, order, null, refunded);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -271,9 +365,13 @@ namespace CategoryProduct.API.Controllers
             {
                 case CancelStatus.Ok:
                     await _notifications.OrderStatusChangedAsync(r.Order!);
+                    if (r.RefundedPayment != null)
+                        await _notifications.PaymentRefundedAsync(r.Order!, r.RefundedPayment);
                     return Ok(r.Order!.ToResponse());
                 case CancelStatus.NotFound:
                     return NotFound();
+                case CancelStatus.ProviderError:
+                    return ProviderErrorProblem();
                 default:
                     return ConflictProblem(r.Detail!);
             }

@@ -24,7 +24,7 @@
 </form>
 
 <table class="table align-middle">
-	<thead><tr><th>Order</th><th>User</th><th>Date</th><th>Status</th><th>Total</th><th></th></tr></thead>
+	<thead><tr><th>Order</th><th>User</th><th>Date</th><th>Status</th><th>Payment</th><th>Total</th><th></th></tr></thead>
 	<tbody>
 		@foreach (var o in Model)
 		{
@@ -33,6 +33,7 @@
 				<td>@o.UserName</td>
 				<td>@o.CreatedAtUtc.ToLocalTime().ToString("g")</td>
 				<td><partial name="_OrderStatusBadge" model="o.Status" /></td>
+				<td><partial name="_PaymentStatusBadge" model="o.PaymentStatus" /></td>
 				<td>@o.Total.ToString("N2")</td>
 				<td>
 					<div class="d-flex gap-2 align-items-center">

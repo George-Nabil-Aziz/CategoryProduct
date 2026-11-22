@@ -87,6 +87,58 @@ namespace CategoryProduct.API.Services
             return Task.CompletedTask;
         }
 
+        /// <summary>After a payment became Succeeded; order User and Items must be loaded. No token or key inside.</summary>
+        public Task PaymentReceiptAsync(Order order, Payment payment)
+        {
+            try
+            {
+                if (!_email.Enabled) return Task.CompletedTask;
+                var to = order.User?.Email;
+                if (string.IsNullOrEmpty(to)) return Task.CompletedTask;
+
+                var id = order.Id.ToString(CultureInfo.InvariantCulture);
+                var sb = new StringBuilder();
+                sb.Append("Hello ").Append(StripLineBreaks(order.User!.UserName)).Append(",\n\n");
+                sb.Append("We received your payment for order #").Append(id).Append(" on ")
+                    .Append(Date(payment.UpdatedAtUtc)).Append(".\n");
+                sb.Append("Amount: ").Append(payment.Amount.ToString("F2", CultureInfo.InvariantCulture))
+                    .Append(' ').Append(payment.Currency).Append('\n');
+                sb.Append("Reference: ").Append(StripLineBreaks(payment.ProviderReference ?? string.Empty)).Append("\n\n");
+                AppendItemsAndTotal(sb, order);
+                _queue.TryEnqueue(new EmailMessage(to, $"Payment received for order #{id}", sb.ToString()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Payment receipt notification failed.");
+            }
+            return Task.CompletedTask;
+        }
+
+        /// <summary>After a paid order was cancelled and the refund succeeded; order User must be loaded.</summary>
+        public Task PaymentRefundedAsync(Order order, Payment payment)
+        {
+            try
+            {
+                if (!_email.Enabled) return Task.CompletedTask;
+                var to = order.User?.Email;
+                if (string.IsNullOrEmpty(to)) return Task.CompletedTask;
+
+                var id = order.Id.ToString(CultureInfo.InvariantCulture);
+                var sb = new StringBuilder();
+                sb.Append("Hello ").Append(StripLineBreaks(order.User!.UserName)).Append(",\n\n");
+                sb.Append("Your payment of ").Append(payment.Amount.ToString("F2", CultureInfo.InvariantCulture))
+                    .Append(' ').Append(payment.Currency).Append(" for order #").Append(id)
+                    .Append(" was refunded on ").Append(Date(payment.UpdatedAtUtc)).Append(".\n");
+                sb.Append("Reference: ").Append(StripLineBreaks(payment.ProviderReference ?? string.Empty)).Append('\n');
+                _queue.TryEnqueue(new EmailMessage(to, $"Payment refunded for order #{id}", sb.ToString()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Payment refund notification failed.");
+            }
+            return Task.CompletedTask;
+        }
+
         /// <summary>Movements must have been saved; movement.Product is used for names.</summary>
         public async Task LowStockAsync(IEnumerable<StockMovement> movements)
         {

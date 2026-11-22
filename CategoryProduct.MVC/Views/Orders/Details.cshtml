@@ -12,6 +12,7 @@
 <p>
 	Placed @Model.CreatedAtUtc.ToLocalTime().ToString("g") &middot;
 	<partial name="_OrderStatusBadge" model="Model.Status" />
+	<partial name="_PaymentStatusBadge" model="Model.PaymentStatus" />
 	@if (User.IsInRole("Admin")) { <text> &middot; @Model.UserName</text> }
 </p>
 
@@ -30,6 +31,28 @@
 	</tbody>
 	<tfoot><tr><th colspan="3" class="text-end">Total</th><th>@Model.Total.ToString("N2")</th></tr></tfoot>
 </table>
+
+@if (Model.Status == "Pending" && Model.PaymentStatus == "Unpaid"
+	&& string.Equals(Model.UserName, User.Identity?.Name, StringComparison.Ordinal))
+{
+	<form asp-action="Pay" asp-route-id="@Model.Id" method="post" class="card card-body mb-3" id="pay-now-form">
+		<h2 class="h5">Pay now</h2>
+		<p class="text-muted mb-2">Test payments only. Do not enter card numbers.</p>
+		<input type="hidden" name="idempotencyKey" value="@Guid.NewGuid().ToString("N")" />
+		<div class="row g-2 align-items-end">
+			<div class="col-auto">
+				<label for="paymentToken" class="form-label">Test payment token</label>
+				<select name="paymentToken" id="paymentToken" class="form-select">
+					@foreach (var t in new[] { "tok_visa", "tok_mastercard", "tok_decline", "tok_insufficient_funds", "tok_refund_fail", "tok_error" })
+					{
+						<option value="@t">@t</option>
+					}
+				</select>
+			</div>
+			<div class="col-auto"><button class="btn btn-primary">Pay @Model.Total.ToString("N2")</button></div>
+		</div>
+	</form>
+}
 
 <div class="d-flex gap-2 mb-3">
 	@if (Model.Status == "Pending")

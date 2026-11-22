@@ -31,6 +31,8 @@ services:
       Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       App__PublicMvcBaseUrl: ${APP_PUBLIC_MVC_BASE_URL:-http://localhost:${MVC_HOST_PORT:-5256}}
       PasswordReset__TokenMinutes: ${PASSWORD_RESET_TOKEN_MINUTES:-30}
+      Payments__Provider: ${PAYMENTS_PROVIDER:-Fake}
+      Payments__Currency: ${PAYMENTS_CURRENCY:-USD}
       Email__Enabled: ${EMAIL_ENABLED:-false}
       Email__Provider: ${EMAIL_PROVIDER:-Pickup}
       Email__From: ${EMAIL_FROM:-noreply@categoryproduct.local}

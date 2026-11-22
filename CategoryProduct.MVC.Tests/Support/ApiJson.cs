@@ -75,11 +75,24 @@ public static class ApiJson
         return new { id, userId, userName, status, total, createdAtUtc = now, updatedAtUtc = now, items = lines };
     }
 
+    /// <summary>Like <see cref="Order"/> but with the payment field the API now returns (Unpaid, Paid or Refunded).</summary>
+    public static object OrderWithPayment(int id, string paymentStatus, string status = "Pending", int userId = 1,
+        string userName = "alice", params object[] lines)
+    {
+        decimal total = 0;
+        foreach (var l in lines) total += (decimal)l.GetType().GetProperty("lineTotal")!.GetValue(l)!;
+        var now = DateTime.UtcNow;
+        return new { id, userId, userName, status, total, paymentStatus, createdAtUtc = now, updatedAtUtc = now, items = lines };
+    }
+
     public static object OrderSummary(int id, string status = "Pending", int userId = 1, string userName = "alice",
-        decimal total = 10m, int itemCount = 1)
+        decimal total = 10m, int itemCount = 1, string? paymentStatus = null)
     {
         var now = DateTime.UtcNow;
-        return new { id, userId, userName, status, total, itemCount, createdAtUtc = now, updatedAtUtc = now };
+        // A null paymentStatus omits the field (an older API), which the MVC model defaults to Unpaid.
+        return paymentStatus == null
+            ? new { id, userId, userName, status, total, itemCount, createdAtUtc = now, updatedAtUtc = now }
+            : new { id, userId, userName, status, total, itemCount, createdAtUtc = now, updatedAtUtc = now, paymentStatus };
     }
 
     public static object User(int id, string userName, string role = "User", string? email = null) =>

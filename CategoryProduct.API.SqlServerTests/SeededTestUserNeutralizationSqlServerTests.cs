@@ -52,12 +52,11 @@ namespace CategoryProduct.API.SqlServerTests
                     UserId = seeded.Id, TokenHash = "hash-live", CreatedAtUtc = now,
                     ExpiresAtUtc = now.AddDays(1), FamilyId = Guid.NewGuid()
                 });
-                db.Orders.Add(new Order
-                {
-                    UserId = seeded.Id, Status = OrderStatus.Pending, Total = 10,
-                    CreatedAtUtc = now, UpdatedAtUtc = now
-                });
                 await db.SaveChangesAsync();
+                // Raw SQL: the Order entity maps columns added by later migrations, which this old schema lacks.
+                await db.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO Orders (UserId, Status, Total, CreatedAtUtc, UpdatedAtUtc, ConcurrencyStamp) " +
+                    "VALUES ({0}, 'Pending', 10, SYSUTCDATETIME(), SYSUTCDATETIME(), NEWID())", seeded.Id);
                 var stampBefore = (await db.RefreshTokens.AsNoTracking().SingleAsync()).ConcurrencyStamp;
 
                 await db.Database.MigrateAsync();

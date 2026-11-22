@@ -30,6 +30,8 @@ namespace CategoryProduct.MVC.Models
         public bool Unauthorized { get; init; }
         public bool Forbidden { get; init; }
         public bool TooManyRequests { get; init; }
+        /// <summary>402 payment declined: the API message ("Payment declined: ...").</summary>
+        public string? Declined { get; init; }
         /// <summary>409 conflict message from the API.</summary>
         public string? Conflict { get; init; }
         /// <summary>400 validation errors: field name -> messages.</summary>

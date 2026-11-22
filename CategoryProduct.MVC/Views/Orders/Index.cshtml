@@ -16,7 +16,7 @@
 else
 {
 	<table class="table">
-		<thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Items</th><th>Total</th><th></th></tr></thead>
+		<thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Payment</th><th>Items</th><th>Total</th><th></th></tr></thead>
 		<tbody>
 			@foreach (var o in Model)
 			{
@@ -24,6 +24,7 @@ else
 					<td>#@o.Id</td>
 					<td>@o.CreatedAtUtc.ToLocalTime().ToString("g")</td>
 					<td><partial name="_OrderStatusBadge" model="o.Status" /></td>
+					<td><partial name="_PaymentStatusBadge" model="o.PaymentStatus" /></td>
 					<td>@o.ItemCount</td>
 					<td>@o.Total.ToString("N2")</td>
 					<td><a asp-action="Details" asp-route-id="@o.Id">Details</a></td>

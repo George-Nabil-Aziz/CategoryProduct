@@ -79,6 +79,19 @@ namespace CategoryProduct.API.Tests
         public static Task<HttpResponseMessage> CancelAsync(HttpClient c, int id) =>
             c.PostAsync($"api/orders/{id}/cancel", null);
 
+        public static Task<HttpResponseMessage> PayAsync(HttpClient c, int orderId, string? token = "tok_visa", string? key = null) =>
+            c.PostAsJsonAsync($"api/orders/{orderId}/pay", new { paymentToken = token, idempotencyKey = key });
+
+        public static async Task<JsonElement> PayOkAsync(HttpClient c, int orderId, string token = "tok_visa", string? key = null)
+        {
+            var r = await PayAsync(c, orderId, token, key);
+            Assert.Equal(System.Net.HttpStatusCode.OK, r.StatusCode);
+            return await JsonAsync(r);
+        }
+
+        public static async Task<string> PaymentStatusAsync(HttpClient c, int id) =>
+            (await GetOrderAsync(c, id)).GetProperty("paymentStatus").GetString()!;
+
         public static async Task<List<string>> ErrorKeysAsync(HttpResponseMessage r) =>
             (await JsonAsync(r)).GetProperty("errors").EnumerateObject().Select(p => p.Name).ToList();
     }
@@ -99,6 +112,8 @@ namespace CategoryProduct.API.Tests
         public string? RacingCheckoutUserName;
         /// <summary>Order cancelled completely (stock restored, movements, status) by a racing request that commits first (0 = none).</summary>
         public int RacingCancelOrderId;
+        /// <summary>Order that gets a competing Pending payment (and a rotated stamp) from a racing pay that claims first (0 = none).</summary>
+        public int RacingPayOrderId;
 
         public void Arm(int times)
         {
@@ -114,6 +129,7 @@ namespace CategoryProduct.API.Tests
             RaceStatus = null;
             RacingCheckoutUserName = null;
             RacingCancelOrderId = 0;
+            RacingPayOrderId = 0;
         }
 
         public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -157,6 +173,14 @@ namespace CategoryProduct.API.Tests
                         QuantityAfter = p.Quantity, Reason = StockMovementReason.OrderCancelled,
                         Note = $"Order #{o.Id} cancelled", CreatedAtUtc = DateTime.UtcNow });
                 }
+            }
+            if (RacingPayOrderId != 0)
+            {
+                var o = await other.Orders.SingleAsync(x => x.Id == RacingPayOrderId, cancellationToken);
+                other.Payments.Add(new Payment { OrderId = o.Id, Amount = o.Total, Currency = "USD",
+                    Status = PaymentState.Pending, IdempotencyKey = "race-" + Guid.NewGuid().ToString("N"),
+                    CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+                o.ConcurrencyStamp = Guid.NewGuid();
             }
             if (RacingCheckoutUserName != null)
             {

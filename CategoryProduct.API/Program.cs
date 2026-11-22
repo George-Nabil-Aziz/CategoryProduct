@@ -79,6 +79,7 @@ var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPer
 var profilePermitLimit = builder.Configuration.GetValue("RateLimiting:ProfilePermitLimit", 30);
 var forgotPasswordPermitLimit = builder.Configuration.GetValue("RateLimiting:ForgotPasswordPermitLimit", 5);
 var passwordPermitLimit = builder.Configuration.GetValue("RateLimiting:PasswordPermitLimit", 5);
+var paymentsPermitLimit = builder.Configuration.GetValue("RateLimiting:PaymentsPermitLimit", 10);
 builder.Services.Configure<CategoryProduct.API.Services.ProductImageOptions>(
     builder.Configuration.GetSection(CategoryProduct.API.Services.ProductImageOptions.SectionName));
 builder.Services.AddSingleton<CategoryProduct.API.Services.IProductImageStorage, CategoryProduct.API.Services.ProductImageStorage>();
@@ -91,6 +92,19 @@ builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenClean
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddEmailNotifications(builder.Configuration);
 builder.Services.AddScoped<CategoryProduct.API.Services.NotificationService>();
+var paymentOptions = CategoryProduct.API.Services.PaymentOptions.Create(
+    builder.Configuration.GetSection(CategoryProduct.API.Services.PaymentOptions.SectionName));
+builder.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(paymentOptions));
+switch (paymentOptions.Provider)
+{
+    case CategoryProduct.API.Services.PaymentOptions.FakeProvider:
+        builder.Services.AddSingleton<CategoryProduct.API.Services.IPaymentGateway, CategoryProduct.API.Services.FakePaymentGateway>();
+        break;
+    default:
+        throw new InvalidOperationException(
+            $"Unknown Payments:Provider '{paymentOptions.Provider}'. Supported: {CategoryProduct.API.Services.PaymentOptions.FakeProvider}.");
+}
+builder.Services.AddScoped<CategoryProduct.API.Services.PaymentService>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -148,6 +162,16 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+    options.AddPolicy("payments", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = paymentsPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
     options.AddPolicy("password", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -160,6 +184,9 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+if (paymentOptions.Provider == CategoryProduct.API.Services.PaymentOptions.FakeProvider)
+    app.Logger.LogWarning("Fake payment gateway active: no real money moves");
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

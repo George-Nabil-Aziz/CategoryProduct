@@ -19,6 +19,7 @@ namespace CategoryProduct.API.Data
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,10 +64,28 @@ namespace CategoryProduct.API.Data
             {
                 b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
                 b.Property(o => o.Total).HasColumnType("decimal(18,2)");
+                b.Property(o => o.PaymentStatus).HasConversion<string>().HasMaxLength(20).IsRequired()
+                    .HasDefaultValue(OrderPaymentStatus.Unpaid);
                 b.Property(o => o.ConcurrencyStamp).IsConcurrencyToken();
                 b.HasOne(o => o.User).WithMany().HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.Restrict);
                 b.HasMany(o => o.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
                 b.HasIndex(o => new { o.UserId, o.CreatedAtUtc });
+            });
+
+            modelBuilder.Entity<Payment>(b =>
+            {
+                b.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+                b.Property(p => p.Currency).HasMaxLength(3).IsRequired();
+                b.Property(p => p.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+                b.Property(p => p.ProviderReference).HasMaxLength(100);
+                b.Property(p => p.IdempotencyKey).HasMaxLength(64).IsRequired();
+                b.Property(p => p.FailureReason).HasMaxLength(200);
+                b.Property(p => p.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne(p => p.Order).WithMany(o => o.Payments).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(p => p.IdempotencyKey).IsUnique();
+                b.HasIndex(p => p.OrderId).IsUnique().HasDatabaseName("IX_Payments_OrderId_Active")
+                    .HasFilter("[Status] IN ('Pending', 'Succeeded')");
+                b.HasIndex(p => new { p.OrderId, p.CreatedAtUtc });
             });
 
             modelBuilder.Entity<OrderItem>(b =>

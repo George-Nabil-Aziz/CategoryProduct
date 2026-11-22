@@ -1,0 +1,5 @@
+@model string
+@{
+	var cls = Model switch { "Paid" => "bg-success", "Refunded" => "bg-info text-dark", _ => "bg-secondary" };
+}
+<span class="badge @cls" data-payment-status="@Model">@Model</span>
