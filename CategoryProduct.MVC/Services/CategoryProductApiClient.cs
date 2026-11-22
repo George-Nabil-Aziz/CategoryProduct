@@ -39,22 +39,23 @@ namespace CategoryProduct.MVC.Services
         public async Task LogoutAsync(string? refreshToken)
         {
             if (string.IsNullOrEmpty(refreshToken)) return;
-            try { using var _ = await _http.PostAsJsonAsync("api/account/logout", new { refreshToken }); }
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, "api/account/logout")
+                { Content = JsonContent.Create(new { refreshToken }) };
+                ApplyBearerToken(request);
+                request.Options.Set(TokenRefreshHandler.SkipRefreshOption, true);
+                using var _ = await _http.SendAsync(request);
+            }
             catch (Exception) { }
         }
 
         public Task<ApiResult> RegisterAsync(string userName, string password) =>
             SendAsync(HttpMethod.Post, "api/account/register", new { userName, password });
 
-        public async Task<PagedResult<UserItem>> GetUsersAsync(int page, int pageSize = 10, string? search = null)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get,
+        public Task<ApiResult<PagedResult<UserItem>>> GetUsersAsync(int page, int pageSize = 10, string? search = null) =>
+            GetAsync<PagedResult<UserItem>>(
                 $"api/users?page={page}&pageSize={pageSize}&search={Uri.EscapeDataString(search ?? "")}");
-            ApplyBearerToken(request);
-            using var response = await _http.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            return (await response.Content.ReadFromJsonAsync<PagedResult<UserItem>>())!;
-        }
 
         public Task<ApiResult> ChangeUserRoleAsync(int id, string role) =>
             SendAsync(HttpMethod.Put, $"api/users/{id}/role", new { role });

@@ -241,4 +241,31 @@ public class TokenRefreshHandlerTests
         Assert.Equal(1, rig.Inner.Calls);
         Assert.Equal("Bearer old", rig.Inner.Requests[0].Authorization);
     }
+
+    [Fact]
+    public async Task Skip_option_with_expiring_token_sends_original_bearer_without_refresh()
+    {
+        var rig = Build(Principal(In(TimeSpan.FromSeconds(30))), StubHandler.Always(200));
+        using var req = Req();
+        req.Options.Set(TokenRefreshHandler.SkipRefreshOption, true);
+        using var resp = await rig.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(1, rig.Inner.Calls);
+        Assert.Equal("Bearer old", rig.Inner.Requests[0].Authorization);
+        Assert.Equal(0, rig.Refresh.Calls);
+        Assert.Empty(rig.Auth.SignIns);
+    }
+
+    [Fact]
+    public async Task Skip_option_with_401_returns_it_without_refresh_or_retry()
+    {
+        var rig = Build(Principal(In(TimeSpan.FromMinutes(15))), StubHandler.Always(401));
+        using var req = Req();
+        req.Options.Set(TokenRefreshHandler.SkipRefreshOption, true);
+        using var resp = await rig.SendAsync(req);
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+        Assert.Equal(1, rig.Inner.Calls);
+        Assert.Equal(0, rig.Refresh.Calls);
+        Assert.Empty(rig.Auth.SignIns);
+    }
 }

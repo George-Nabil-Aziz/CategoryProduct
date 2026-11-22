@@ -25,7 +25,7 @@ Legend: `A` = signed in as Admin, `U` = signed in as User, `anon` = anonymous. R
 | POST Register | API 400 `{UserName:[..],Password:[..]}` | messages shown (field-bound) | |
 | POST Register | other 400 key | message shown in summary | |
 | POST Register | passwords differ / short password / bad chars | 200 with model error, API not called | |
-| POST Logout | signed in | 302 `/Categories`, cookie cleared (next GET anonymous), API got `POST api/account/logout` with `{refreshToken}` | no Authorization |
+| POST Logout | signed in | 302 `/Categories`, cookie cleared (next GET anonymous), API got `POST api/account/logout` with `{refreshToken}` | Authorization is the access token (022) |
 | POST Logout | API throws `HttpRequestException` | still 302 and signed out | |
 | POST Logout | API 500 | still signed out (503 from handler is swallowed by `LogoutAsync`) | |
 | GET AccessDenied | U | 200 | |

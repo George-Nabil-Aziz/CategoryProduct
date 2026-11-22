@@ -115,14 +115,15 @@ public class ProductImageTests : MvcTestBase
     }
 
     [Fact]
-    public async Task Upload_api_409_rerenders_details_without_exception()
+    public async Task Upload_api_409_shows_detail()
     {
         await SignInAdminAsync();
         ScriptProduct(1);
-        Fake.On(HttpMethod.Post, "api/product/1/image", FakeResponse.Json(409, ApiJson.ConflictProblem("Conflict.")));
+        Fake.On(HttpMethod.Post, "api/product/1/image", FakeResponse.Json(409, ApiJson.ConflictProblem("Image conflict on upload.")));
         var resp = await PostMultipartAsync("/Products/UploadImage/1", new Dictionary<string, string>(),
             "pic.png", "image/png", Png, tokenPageUrl: "/Products/Details/1");
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.True(HtmlHelpers.HasText(await resp.Content.ReadAsStringAsync(), "Image conflict on upload."));
     }
 
     [Fact]
@@ -183,5 +184,17 @@ public class ProductImageTests : MvcTestBase
         Assert.True((int)resp.StatusCode is >= 300 and < 400);
         Assert.Equal("/Account/AccessDenied", PathOf(resp), ignoreCase: true);
         Assert.Empty(Fake.Requests);
+    }
+
+    [Fact]
+    public async Task RemoveImage_api_409_shows_detail()
+    {
+        await SignInAdminAsync();
+        ScriptProduct(1, imageUrl: "http://fake-api/i.png");
+        Fake.On(HttpMethod.Delete, "api/product/1/image", FakeResponse.Json(409, ApiJson.ConflictProblem("Image conflict on remove.")));
+        var resp = await PostFormAsync("/Products/RemoveImage/1", new Dictionary<string, string>(),
+            tokenPageUrl: "/Products/Details/1");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.True(HtmlHelpers.HasText(await resp.Content.ReadAsStringAsync(), "Image conflict on remove."));
     }
 }

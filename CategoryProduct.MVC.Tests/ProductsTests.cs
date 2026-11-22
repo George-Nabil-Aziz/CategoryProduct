@@ -186,13 +186,14 @@ public class ProductsTests : MvcTestBase
     }
 
     [Fact]
-    public async Task Create_post_api_409_rerenders_without_exception()
+    public async Task Create_post_api_409_shows_detail()
     {
         await SignInAdminAsync();
         ScriptCategories();
-        Fake.On(HttpMethod.Post, "api/product", FakeResponse.Json(409, ApiJson.ConflictProblem("Conflict.")));
+        Fake.On(HttpMethod.Post, "api/product", FakeResponse.Json(409, ApiJson.ConflictProblem("Product name already exists.")));
         var resp = await PostFormAsync("/Products/Create", Form());
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("Product name already exists.", HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
     }
 
     // ---------- Edit ----------
@@ -245,13 +246,14 @@ public class ProductsTests : MvcTestBase
     }
 
     [Fact]
-    public async Task Edit_post_api_409_rerenders_without_exception()
+    public async Task Edit_post_api_409_shows_detail()
     {
         await SignInAdminAsync();
         ScriptProduct(5);
-        Fake.On(HttpMethod.Put, "api/product/5", FakeResponse.Json(409, ApiJson.ConflictProblem("Conflict.")));
+        Fake.On(HttpMethod.Put, "api/product/5", FakeResponse.Json(409, ApiJson.ConflictProblem("Conflict while updating.")));
         var resp = await PostFormAsync("/Products/Edit/5", Form(id: 5));
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("Conflict while updating.", HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
     }
 
     // ---------- Delete ----------
@@ -299,12 +301,28 @@ public class ProductsTests : MvcTestBase
     }
 
     [Fact]
-    public async Task Delete_post_api_409_rerenders_without_exception()
+    public async Task Delete_post_api_409_shows_detail()
     {
         await SignInAdminAsync();
         ScriptProduct(5);
-        Fake.On(HttpMethod.Delete, "api/product/5", FakeResponse.Json(409, ApiJson.ConflictProblem("Conflict.")));
+        Fake.On(HttpMethod.Delete, "api/product/5", FakeResponse.Json(409, ApiJson.ConflictProblem("Product is referenced by orders.")));
         var resp = await PostFormAsync("/Products/Delete/5", new Dictionary<string, string>());
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.True(HtmlHelpers.HasText(html, "Are you sure you want to delete this?"));
+        Assert.Equal("Product is referenced by orders.", HtmlHelpers.FieldError(html, ""));
+    }
+
+    [Theory]
+    [InlineData("not json", "text/plain")]
+    [InlineData("", "application/json")]
+    public async Task Create_post_api_409_without_detail_shows_generic_conflict(string body, string contentType)
+    {
+        await SignInAdminAsync();
+        ScriptCategories();
+        Fake.On(HttpMethod.Post, "api/product", FakeResponse.Raw(409, body, contentType));
+        var resp = await PostFormAsync("/Products/Create", Form());
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal("The request conflicts with existing data.", HtmlHelpers.FieldError(await resp.Content.ReadAsStringAsync(), ""));
     }
 }

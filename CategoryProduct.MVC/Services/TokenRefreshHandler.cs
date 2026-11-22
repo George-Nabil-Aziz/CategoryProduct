@@ -13,8 +13,14 @@ namespace CategoryProduct.MVC.Services
         public const string RefreshClientName = "api-refresh";
         private const string TriedKey = "refresh_tried";
 
+        /// <summary>Set on a request to bypass all refresh logic (used by logout so it never rotates the refresh token).</summary>
+        public static readonly HttpRequestOptionsKey<bool> SkipRefreshOption = new("cp.skip-refresh");
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (request.Options.TryGetValue(SkipRefreshOption, out var skip) && skip)
+                return await base.SendAsync(request, ct);
+
             var http = accessor.HttpContext;
             // Only authenticated requests (bearer attached) take part in refresh logic.
             if (http == null || request.Headers.Authorization == null || http.User.Identity?.IsAuthenticated != true)

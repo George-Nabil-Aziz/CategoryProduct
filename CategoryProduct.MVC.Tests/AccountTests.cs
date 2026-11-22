@@ -224,12 +224,12 @@ public class AccountTests : MvcTestBase
     [Fact]
     public async Task Logout_clears_cookie_and_revokes_refresh_token()
     {
-        await SignInUserAsync("alice", refresh: "refresh-xyz");
+        await SignInUserAsync("alice", token: "tok-1", refresh: "refresh-xyz");
         Fake.On(HttpMethod.Post, "api/account/logout", FakeResponse.Status(204));
         var resp = await LogoutAsync();
         AssertRedirect(resp, Home);
         var call = Fake.Single(HttpMethod.Post, "api/account/logout");
-        Assert.Null(call.Authorization);
+        Assert.Equal("Bearer tok-1", call.Authorization);
         Assert.Equal("refresh-xyz", call.Json().GetProperty("refreshToken").GetString());
         await AssertSignedOutAsync();
     }
@@ -278,5 +278,48 @@ public class AccountTests : MvcTestBase
         Assert.DoesNotContain(resp.Headers.GetValues("Set-Cookie"), c => Regex.IsMatch(c, "expires=", RegexOptions.IgnoreCase));
         var next = await GetAsync("/Cart");
         AssertLoginRedirect(next, "/Cart");
+    }
+
+    [Fact]
+    public async Task Logout_with_expiring_token_does_not_refresh_and_uses_old_bearer_and_refresh_token()
+    {
+        await SignInUserAsync("alice", expiresInSeconds: 30, token: "tok-old", refresh: "r-old");
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Json(200, ApiJson.Login("User", 900, "tok-new", "r-new")));
+        Fake.On(HttpMethod.Post, "api/account/logout", FakeResponse.Status(204));
+        var resp = await LogoutAsync();
+        AssertRedirect(resp, Home);
+        Assert.Empty(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+        var call = Fake.Single(HttpMethod.Post, "api/account/logout");
+        Assert.Equal("Bearer tok-old", call.Authorization);
+        Assert.Equal("r-old", call.Json().GetProperty("refreshToken").GetString());
+        await AssertSignedOutAsync();
+    }
+
+    [Fact]
+    public async Task Logout_api_401_does_not_refresh_or_retry_and_still_signs_out()
+    {
+        await SignInUserAsync("alice", token: "tok-old", refresh: "r-old");
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Json(200, ApiJson.Login("User", 900, "tok-new", "r-new")));
+        Fake.On(HttpMethod.Post, "api/account/logout", FakeResponse.Status(401));
+        var resp = await LogoutAsync();
+        AssertRedirect(resp, Home);
+        Assert.Single(Fake.Calls(HttpMethod.Post, "api/account/logout"));
+        Assert.Empty(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+        await AssertSignedOutAsync();
+    }
+
+    [Fact]
+    public async Task Logout_with_empty_refresh_token_makes_no_api_call_and_signs_out()
+    {
+        Fake.On(HttpMethod.Post, "api/account/login", FakeResponse.Json(200, ApiJson.Login("User", 900, "tok-1", "")));
+        var login = await PostFormAsync("/Account/Login",
+            new Dictionary<string, string> { ["UserName"] = "alice", ["Password"] = "P@ssw0rd!" });
+        Assert.Equal(HttpStatusCode.Found, login.StatusCode);
+        Fake.ClearRequests();
+        Fake.On(HttpMethod.Post, "api/account/logout", FakeResponse.Status(204));
+        var resp = await LogoutAsync();
+        AssertRedirect(resp, Home);
+        Assert.Empty(Fake.Calls(HttpMethod.Post, "api/account/logout"));
+        await AssertSignedOutAsync();
     }
 }

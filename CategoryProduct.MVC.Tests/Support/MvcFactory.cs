@@ -9,7 +9,7 @@ namespace CategoryProduct.MVC.Tests;
 /// <see cref="Fake"/> as its primary handler, so ApiErrorHandler/TokenRefreshHandler/CategoryProductApiClient stay real.
 /// One instance per test class (xunit class fixture).
 /// </summary>
-public sealed class MvcFactory : WebApplicationFactory<Program>
+public class MvcFactory : WebApplicationFactory<Program>
 {
     private readonly string _dpPath = Path.Combine(Path.GetTempPath(), "cp-mvc-dp-" + Guid.NewGuid().ToString("N"));
     private readonly string _logDir = Path.Combine(Path.GetTempPath(), "cp-mvc-logs-" + Guid.NewGuid().ToString("N"));
@@ -17,9 +17,12 @@ public sealed class MvcFactory : WebApplicationFactory<Program>
     /// <summary>The fake API shared by all clients of this host.</summary>
     public FakeApi Fake { get; } = new();
 
+    /// <summary>Hosting environment; <see cref="ProductionMvcFactory"/> overrides it with Production.</summary>
+    protected virtual string EnvironmentName => "Development";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("Api:BaseUrl", "http://fake-api/");
         builder.UseSetting("Hosting:UseHttpsRedirection", "false");
         builder.UseSetting("Cookie:SecurePolicy", "SameAsRequest");

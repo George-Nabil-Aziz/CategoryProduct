@@ -1,4 +1,6 @@
 using CategoryProduct.MVC.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,10 +16,14 @@ namespace CategoryProduct.MVC.Controllers
         public async Task<IActionResult> Index(int page = 1, string? search = null)
         {
             var result = await _api.GetUsersAsync(Math.Max(page, 1), search: search);
+            if (result.Unauthorized) return await SessionExpiredAsync();
+            if (result.Forbidden) return RedirectToAction("AccessDenied", "Account");
+            if (!result.Success) throw new HttpRequestException("Could not load users.");
+            var users = result.Value!;
             ViewBag.Search = search;
-            ViewBag.CurrentPage = result.Page;
-            ViewBag.TotalPages = result.TotalPages;
-            return View(result.Items);
+            ViewBag.CurrentPage = users.Page;
+            ViewBag.TotalPages = users.TotalPages;
+            return View(users.Items);
         }
 
         [HttpPost]
@@ -25,12 +31,19 @@ namespace CategoryProduct.MVC.Controllers
         public async Task<IActionResult> ChangeRole(int id, string role, int page = 1, string? search = null)
         {
             var result = await _api.ChangeUserRoleAsync(id, role);
+            if (result.Unauthorized) return await SessionExpiredAsync(Url.Action(nameof(Index), new { page, search }));
             if (result.Success) TempData["Success"] = "Role updated.";
             else if (result.Conflict != null) TempData["Error"] = result.Conflict;
             else if (result.Errors.Count > 0) TempData["Error"] = string.Join(" ", result.Errors.Values.SelectMany(v => v));
             else if (result.NotFound) TempData["Error"] = "User not found.";
             else TempData["Error"] = "Could not change role.";
             return RedirectToAction(nameof(Index), new { page, search });
+        }
+
+        private async Task<IActionResult> SessionExpiredAsync(string? returnUrl = null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("Login", "Account", new { returnUrl = returnUrl ?? Request.Path + Request.QueryString });
         }
     }
 }

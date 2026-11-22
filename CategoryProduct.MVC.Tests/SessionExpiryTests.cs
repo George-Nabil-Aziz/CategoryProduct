@@ -40,6 +40,8 @@ public class SessionExpiryTests : MvcTestBase
         new("Inventory POST AddMovement", HttpMethod.Post, "/Inventory/Product/1", "api/product/1/stock-movements",
             new() { ["quantityChange"] = "5", ["reason"] = "Restock", ["note"] = "", ["page"] = "1" },
             new Route(HttpMethod.Post, "api/product/1/stock-movements", null, 201)),
+        new("Users GET Index", HttpMethod.Get, "/Users?page=2", "api/users", null,
+            new Route(HttpMethod.Get, "api/users", ApiJson.Paged(new[] { ApiJson.User(1, "alice") }, 2, 10, totalPages: 2))),
         new("Cart GET Index", HttpMethod.Get, "/Cart", "api/cart", null,
             new Route(HttpMethod.Get, "api/cart", ApiJson.Cart())),
         new("Cart POST Add", HttpMethod.Post, "/Cart/Add", "api/cart/items",

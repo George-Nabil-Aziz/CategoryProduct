@@ -139,4 +139,92 @@ public class UsersTests : MvcTestBase
         var html = await ChangeRoleThenFollowAsync();
         Assert.Equal("Could not change role.", HtmlHelpers.Alert(html, "danger"));
     }
+
+    private const string ListUrl = "/Users?page=2&search=al";
+
+    private async Task AssertSignedOutAsync()
+    {
+        Fake.ClearRequests();
+        AssertLoginRedirect(await GetAsync("/Users"), "/Users");
+        Assert.Empty(Fake.Requests);
+    }
+
+    [Fact]
+    public async Task Index_401_with_failed_refresh_redirects_to_login_and_clears_cookie()
+    {
+        await SignInAdminAsync(token: "tok-old", refresh: "r1");
+        Fake.On(HttpMethod.Get, "api/users", FakeResponse.Status(401));
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Status(401));
+        var resp = await GetAsync(ListUrl);
+        AssertLoginRedirect(resp, ListUrl);
+        Assert.Single(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+        await AssertSignedOutAsync();
+    }
+
+    [Fact]
+    public async Task Index_401_with_successful_refresh_retries_with_new_bearer()
+    {
+        await SignInAdminAsync(token: "tok-old", refresh: "r1");
+        Fake.On(HttpMethod.Get, "api/users", req => req.Authorization == "Bearer tok-old"
+            ? FakeResponse.Status(401)
+            : FakeResponse.Json(200, ApiJson.Paged(new[] { ApiJson.User(1, "alice") }, 2, 10, totalPages: 2)));
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Json(200, ApiJson.Login("Admin", 900, "tok-new", "r2")));
+        var html = await GetHtmlAsync(ListUrl);
+        Assert.True(HtmlHelpers.HasText(html, "alice"));
+        var calls = Fake.Calls(HttpMethod.Get, "api/users");
+        Assert.Equal(2, calls.Count);
+        Assert.Equal("Bearer tok-old", calls[0].Authorization);
+        Assert.Equal("Bearer tok-new", calls[1].Authorization);
+        Assert.Single(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+    }
+
+    [Fact]
+    public async Task ChangeRole_401_with_failed_refresh_redirects_to_login_with_list_return_url()
+    {
+        await SignInAdminAsync(token: "tok-old", refresh: "r1");
+        ScriptUsers();
+        Fake.On(HttpMethod.Put, "api/users/1/role", FakeResponse.Status(401));
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Status(401));
+        var resp = await ChangeRole();
+        AssertLoginRedirect(resp, ListUrl);
+        Assert.Single(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+        await AssertSignedOutAsync();
+    }
+
+    [Fact]
+    public async Task ChangeRole_401_with_successful_refresh_is_retried_and_redirects_to_list()
+    {
+        await SignInAdminAsync(token: "tok-old", refresh: "r1");
+        ScriptUsers();
+        Fake.On(HttpMethod.Put, "api/users/1/role", req => req.Authorization == "Bearer tok-old"
+            ? FakeResponse.Status(401) : FakeResponse.Status(204));
+        Fake.On(HttpMethod.Post, "api/account/refresh", FakeResponse.Json(200, ApiJson.Login("Admin", 900, "tok-new", "r2")));
+        var resp = await ChangeRole();
+        AssertRedirect(resp, ListUrl);
+        var calls = Fake.Calls(HttpMethod.Put, "api/users/1/role");
+        Assert.Equal(2, calls.Count);
+        Assert.Equal("Bearer tok-new", calls[1].Authorization);
+        Assert.Single(Fake.Calls(HttpMethod.Post, "api/account/refresh"));
+    }
+
+    [Fact]
+    public async Task Index_api_403_redirects_to_access_denied()
+    {
+        await SignInAdminAsync();
+        Fake.On(HttpMethod.Get, "api/users", FakeResponse.Status(403));
+        var resp = await GetAsync("/Users");
+        Assert.True((int)resp.StatusCode is >= 300 and < 400);
+        Assert.Contains("/Account/AccessDenied", resp.Headers.Location!.ToString());
+    }
+
+    [Fact]
+    public async Task Index_api_404_is_an_unhandled_error()
+    {
+        await SignInAdminAsync();
+        Fake.On(HttpMethod.Get, "api/users", FakeResponse.Status(404));
+        using var resp = await GetAsync("/Users");
+        // Development host: the developer exception page turns the thrown HttpRequestException into a 500.
+        Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
+        Assert.Contains("Could not load users.", await resp.Content.ReadAsStringAsync());
+    }
 }
