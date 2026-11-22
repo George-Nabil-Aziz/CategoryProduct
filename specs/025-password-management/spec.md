@@ -198,6 +198,7 @@ Expired and old used reset tokens are removed by the existing refresh-token clea
 - **Tests**: `ApiFactory` already swaps `IEmailSender` for the recording sender; the real queue and worker run, so the whole path controller, notification, queue, worker, sender is covered.
 
 ## Known Gaps
+- **CI verified**: the run for commit `94aec7d` passed all four jobs (`build-test`, `docker-build`, `sqlserver-tests`, `compose-smoke`) on 2026-11-22. Local review: 771 tests (365 MVC, 406 API) green on 2 more full runs; 24 SQL Server tests green on LocalDB.
 
 - **Implemented** (T001-T040 done; T041 open). Migration: `20261122195916_AddPasswordResetTokens` (generated with `dotnet ef migrations add AddPasswordResetTokens --project CategoryProduct.API`, only creates `PasswordResetTokens` with the two indexes and the cascade FK; never hand-edited; `dotnet ef database update` was not run).
 - **Test counts**: `dotnet test CategoryProduct.slnx` = 365 MVC (was 337, +28) + 406 API (was 366, +40) = 771 (was 703); four consecutive full runs all green. `CategoryProduct.API.SqlServerTests` = 24 tests (+4 for the new table), run locally on LocalDB (`(localdb)\MSSQLLocalDB`, throwaway GUID-named databases) and all passed; it is not part of `CategoryProduct.slnx` and was also built with `dotnet build CategoryProduct.API.SqlServerTests` (0 errors).

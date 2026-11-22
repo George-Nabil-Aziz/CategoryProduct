@@ -124,7 +124,7 @@ description: "Task list for 025-password-management"
 - [X] T038 [US5] Run `dotnet build CategoryProduct.API.SqlServerTests` (0 errors).
 - [X] T039 [US5] Run `dotnet test CategoryProduct.slnx` THREE times in a row; all green each time; record the test counts (more than the 703 baseline).
 - [X] T040 [US5] Complete `specs/025-password-management/spec.md` Known Gaps with the final facts (status line to Implemented, migration name, test counts, whether the SQL Server test ran locally or only compiled, deviations, compose validation status).
-- [ ] T041 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new index test) and `compose-smoke` are green and record the run in Known Gaps. **Leave open until a CI run is observed.**
+- [X] T041 After pushing (when the user pushes), confirm `build-test`, `docker-build`, `sqlserver-tests` (the new index test) and `compose-smoke` are green and record the run in Known Gaps. **Leave open until a CI run is observed.**
 
 ---
 
