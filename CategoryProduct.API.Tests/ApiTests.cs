@@ -143,11 +143,21 @@ namespace CategoryProduct.API.Tests
         public class LimitedFactory : ApiFactory
         {
             protected override int LoginPermitLimit => 2;
+            protected override int LogoutPermitLimit => 2;
         }
 
         private readonly HttpClient _client;
 
         public RateLimitTests(LimitedFactory factory) => _client = factory.CreateClient();
+
+        [Fact]
+        public async Task Logout_ExceedingLimit_Returns429()
+        {
+            var body = new { refreshToken = "unknown" };
+            for (var i = 0; i < 2; i++)
+                Assert.Equal(HttpStatusCode.NoContent, (await _client.PostAsJsonAsync("api/account/logout", body)).StatusCode);
+            Assert.Equal(HttpStatusCode.TooManyRequests, (await _client.PostAsJsonAsync("api/account/logout", body)).StatusCode);
+        }
 
         [Fact]
         public async Task Login_ExceedingLimit_Returns429()

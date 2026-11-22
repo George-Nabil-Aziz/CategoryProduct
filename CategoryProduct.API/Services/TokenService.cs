@@ -41,7 +41,7 @@ namespace CategoryProduct.API.Services
         }
 
         /// <summary>Creates a refresh token entity (hash only) and returns the raw token to hand to the client.</summary>
-        public (string RawToken, RefreshToken Entity) CreateRefreshToken(int userId)
+        public (string RawToken, RefreshToken Entity) CreateRefreshToken(int userId, Guid familyId)
         {
             var raw = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(64));
             var days = _configuration.GetValue<int>("Jwt:RefreshTokenDays", 7);
@@ -49,6 +49,8 @@ namespace CategoryProduct.API.Services
             return (raw, new RefreshToken
             {
                 UserId = userId,
+                FamilyId = familyId,
+                ConcurrencyStamp = Guid.NewGuid(),
                 TokenHash = Hash(raw),
                 CreatedAtUtc = now,
                 ExpiresAtUtc = now.AddDays(days)

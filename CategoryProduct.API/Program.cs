@@ -71,8 +71,11 @@ builder.Services.AddAuthorization();
 
 var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 5);
 var registerPermitLimit = builder.Configuration.GetValue("RateLimiting:RegisterPermitLimit", 5);
+var logoutPermitLimit = builder.Configuration.GetValue("RateLimiting:LogoutPermitLimit", 30);
 var refreshPermitLimit = builder.Configuration.GetValue("RateLimiting:RefreshPermitLimit", 30);
 builder.Services.AddScoped<CategoryProduct.API.Services.TokenService>();
+builder.Services.AddScoped<CategoryProduct.API.Services.RefreshTokenCleanupService>();
+builder.Services.AddHostedService<CategoryProduct.API.Services.RefreshTokenCleanupWorker>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -100,6 +103,15 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = refreshPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy("logout", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = logoutPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));

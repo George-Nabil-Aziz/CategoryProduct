@@ -75,11 +75,18 @@ namespace CategoryProduct.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ReplacedByTokenHash")
                         .HasMaxLength(128)

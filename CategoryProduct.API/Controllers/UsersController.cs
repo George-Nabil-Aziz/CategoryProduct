@@ -1,7 +1,9 @@
+using System.Data;
 using CategoryProduct.API.Data;
 using CategoryProduct.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace CategoryProduct.API.Controllers
@@ -45,16 +47,47 @@ namespace CategoryProduct.API.Controllers
                 return BadRequest(new ValidationProblemDetails(
                     new Dictionary<string, string[]> { ["Role"] = new[] { "Role must be 'User' or 'Admin'." } }));
 
+            try
+            {
+                return await UpdateRoleOnceAsync(id, request.Role);
+            }
+            catch (Exception ex) when (IsDeadlock(ex))
+            {
+                _context.ChangeTracker.Clear();
+                return await UpdateRoleOnceAsync(id, request.Role);
+            }
+        }
+
+        private async Task<IActionResult> UpdateRoleOnceAsync(int id, string role)
+        {
+            if (!_context.Database.IsRelational())
+                return await ApplyRoleAsync(id, role);
+
+            await using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var result = await ApplyRoleAsync(id, role);
+            await tx.CommitAsync();
+            return result;
+        }
+
+        private async Task<IActionResult> ApplyRoleAsync(int id, string role)
+        {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
 
-            if (user.Role == "Admin" && request.Role != "Admin"
+            if (user.Role == "Admin" && role != "Admin"
                 && !await _context.Users.AnyAsync(u => u.Role == "Admin" && u.Id != id))
                 return Conflict(new ProblemDetails { Status = 409, Title = "Conflict", Detail = "Cannot remove the last admin." });
 
-            user.Role = request.Role;
+            user.Role = role;
             await _context.SaveChangesAsync();
             return Ok(new UserResponseDto(user.Id, user.UserName, user.Role));
+        }
+
+        private static bool IsDeadlock(Exception? ex)
+        {
+            for (; ex != null; ex = ex.InnerException)
+                if (ex is SqlException { Number: 1205 }) return true;
+            return false;
         }
     }
 }

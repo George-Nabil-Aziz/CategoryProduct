@@ -22,6 +22,7 @@ namespace CategoryProduct.API.Data
                 b.HasIndex(r => r.TokenHash).IsUnique();
                 b.Property(r => r.TokenHash).HasMaxLength(128).IsRequired();
                 b.Property(r => r.ReplacedByTokenHash).HasMaxLength(128);
+                b.Property(r => r.ConcurrencyStamp).IsConcurrencyToken();
                 b.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -59,7 +59,7 @@ namespace CategoryProduct.API.Controllers
             if (result == PasswordVerificationResult.Failed)
                 return Unauthorized();
 
-            return Ok(await IssueAsync(user));
+            return Ok(await IssueAsync(user, Guid.NewGuid()));
         }
 
         [HttpPost("refresh")]
@@ -75,10 +75,11 @@ namespace CategoryProduct.API.Controllers
             if (stored.RevokedAtUtc != null)
             {
                 var active = await _context.RefreshTokens
-                    .Where(r => r.UserId == stored.UserId && r.RevokedAtUtc == null)
+                    .Where(r => r.UserId == stored.UserId && r.FamilyId == stored.FamilyId && r.RevokedAtUtc == null)
                     .ToListAsync();
-                foreach (var t in active) t.RevokedAtUtc = now;
-                await _context.SaveChangesAsync();
+                foreach (var t in active) t.Revoke(now);
+                try { await _context.SaveChangesAsync(); }
+                catch (DbUpdateConcurrencyException) { }
                 return Unauthorized();
             }
             if (stored.ExpiresAtUtc <= now)
@@ -88,31 +89,40 @@ namespace CategoryProduct.API.Controllers
             if (user == null)
                 return Unauthorized();
 
-            var response = await IssueAsync(user, stored);
-            return Ok(response);
+            try
+            {
+                var response = await IssueAsync(user, stored.FamilyId, stored);
+                return Ok(response);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Unauthorized();
+            }
         }
 
         [HttpPost("logout")]
+        [EnableRateLimiting("logout")]
         public async Task<IActionResult> Logout(RefreshRequestDto request)
         {
             var hash = TokenService.Hash(request.RefreshToken ?? string.Empty);
             var stored = await _context.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
             if (stored != null && stored.RevokedAtUtc == null)
             {
-                stored.RevokedAtUtc = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                stored.Revoke(DateTime.UtcNow);
+                try { await _context.SaveChangesAsync(); }
+                catch (DbUpdateConcurrencyException) { }
             }
             return NoContent();
         }
 
-        private async Task<LoginResponseDto> IssueAsync(Models.User user, Models.RefreshToken? replacing = null)
+        private async Task<LoginResponseDto> IssueAsync(Models.User user, Guid familyId, Models.RefreshToken? replacing = null)
         {
             var (access, accessExpires) = _tokens.CreateAccessToken(user);
-            var (raw, entity) = _tokens.CreateRefreshToken(user.Id);
+            var (raw, entity) = _tokens.CreateRefreshToken(user.Id, familyId);
             _context.RefreshTokens.Add(entity);
             if (replacing != null)
             {
-                replacing.RevokedAtUtc = DateTime.UtcNow;
+                replacing.Revoke(DateTime.UtcNow);
                 replacing.ReplacedByTokenHash = entity.TokenHash;
             }
             await _context.SaveChangesAsync();

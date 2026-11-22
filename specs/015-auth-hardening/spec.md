@@ -231,6 +231,10 @@ against SQL Server (see Known Gaps).
 
 ## Known Gaps
 
+- The concurrency and transaction behavior (US2 optimistic concurrency, US5 serializable transaction
+  and deadlock retry, rollback of a lost refresh save) and the manual `quickstart.md` walkthrough
+  (T024) were not verified against SQL Server; only EF InMemory tests were run. The generated
+  `AuthHardening` migration was not applied to any database.
 - True concurrency (US2 simultaneous requests, US5 simultaneous demotions) cannot be reproduced on
   EF InMemory; US2 is verified by a deterministic interceptor, US5 only sequentially. Real
   verification needs SQL Server (manual).
@@ -240,6 +244,10 @@ against SQL Server (see Known Gaps).
   replaying one of them revokes that user's other legacy tokens, until they expire.
 - No grace window for racing clients: the loser gets `401` and must retry with the winner's token
   (MVC `TokenRefreshHandler` behavior after a lost race was not verified in a browser).
+- The concurrency token only protects refreshes that both read the token before either commits. If
+  the second request reads the row after the first has committed, it sees a revoked token and is
+  handled as reuse, which revokes the family (including the winner's new token). Closing that needs
+  a grace window, which is out of scope (found in Review).
 - Purge is not coordinated across multiple API instances (concurrent purges are harmless but
   redundant).
 - Existing gaps from 014 not in scope remain: no tests for MVC handlers, the status for a missing

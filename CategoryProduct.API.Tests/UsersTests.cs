@@ -108,5 +108,25 @@ namespace CategoryProduct.API.Tests
             var r = await admin.PutAsJsonAsync($"api/users/{id}/role", new { role = "User" });
             Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
         }
+
+        [Fact]
+        public async Task DemotingOneOfTwoAdmins_Succeeds()
+        {
+            var admin = await AuthHelper.LoggedInAsync(_factory, ApiFactory.UserName);
+            var list = await admin.GetFromJsonAsync<JsonElement>("api/users?search=" + ApiFactory.UserName);
+            var originalId = list.GetProperty("items")[0].GetProperty("id").GetInt32();
+
+            var name = AuthHelper.Unique("second");
+            var reg = await admin.PostAsJsonAsync("api/account/register", new { userName = name, password = "longenough1" });
+            var secondId = (await reg.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+            Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"api/users/{secondId}/role", new { role = "Admin" })).StatusCode);
+
+            Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"api/users/{originalId}/role", new { role = "User" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsJsonAsync($"api/users/{secondId}/role", new { role = "User" })).StatusCode);
+
+            // restore the original admin so other tests sharing this fixture are unaffected
+            var second = await AuthHelper.LoggedInAsync(_factory, name, "longenough1");
+            Assert.Equal(HttpStatusCode.OK, (await second.PutAsJsonAsync($"api/users/{originalId}/role", new { role = "Admin" })).StatusCode);
+        }
     }
 }

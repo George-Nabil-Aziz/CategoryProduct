@@ -15,7 +15,11 @@ namespace CategoryProduct.API.Tests
         public const string Password = "P@ssw0rd!";
         public const int SeedCategoryCount = 3;
 
+        protected readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot DbRoot = new();
+        public readonly string DbName = Guid.NewGuid().ToString();
+
         protected virtual int LoginPermitLimit => 1000;
+        protected virtual int LogoutPermitLimit => 1000;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -26,6 +30,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
             builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
             builder.UseSetting("RateLimiting:RefreshPermitLimit", "1000");
+            builder.UseSetting("RateLimiting:LogoutPermitLimit", LogoutPermitLimit.ToString());
 
             builder.ConfigureServices(services =>
             {
@@ -39,8 +44,7 @@ namespace CategoryProduct.API.Tests
                 foreach (var d in descriptors)
                     services.Remove(d);
 
-                var dbName = Guid.NewGuid().ToString();
-                services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(dbName));
+                services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(DbName, DbRoot));
 
                 using var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();

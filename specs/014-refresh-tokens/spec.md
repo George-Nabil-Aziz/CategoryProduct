@@ -168,11 +168,16 @@ Known Gaps: not run).
 - MVC `TokenRefreshHandler`, `AuthSessionService` and logout have no automated tests and were not
   run in a browser when this spec was written.
 - Expired-token and deleted-user refresh paths, `429` on refresh, and the reuse-after-logout case
-  have no dedicated tests.
+  have no dedicated tests. (The reuse-after-logout case and `429` on logout are now covered by
+  `015-auth-hardening` tests.)
 - Reuse detection is per user (all active tokens), not per token chain; a user logged in on several
-  devices loses all sessions when any revoked token is replayed.
+  devices loses all sessions when any revoked token is replayed. (Closed by `015-auth-hardening`:
+  revocation is now scoped to the token family.)
 - Concurrent refresh requests are not serialized; there is no grace window for racing clients.
-- Expired/revoked refresh token rows are never purged.
-- The logout endpoint is unauthenticated and not rate limited.
+  (Partly closed by `015-auth-hardening`: a concurrency token makes the loser get `401`; there is still
+  no grace window.)
+- Expired/revoked refresh token rows are never purged. (Closed by `015-auth-hardening`: periodic purge.)
+- The logout endpoint is unauthenticated and not rate limited. (Rate limit closed by `015-auth-hardening`;
+  it stays unauthenticated.)
 - Missing `refreshToken` in the request body is not specifically handled in code (the value is
   coalesced to an empty string before hashing); the resulting HTTP status was not verified.
