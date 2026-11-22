@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/logs/
+.git/
+.vs/
+.env
+.env.*
+specs/
+.specify/
+.claude/

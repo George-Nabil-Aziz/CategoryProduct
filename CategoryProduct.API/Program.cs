@@ -133,7 +133,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue("Hosting:UseHttpsRedirection", true))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -144,6 +147,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = CategoryProduct.API.Infrastructure.HealthCheckResponseWriter.WriteAsync
 }).AllowAnonymous();
+
+await DatabaseMigrator.MigrateIfEnabledAsync(app.Services, app.Configuration, app.Logger);
 
 app.Run();
 

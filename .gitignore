@@ -372,3 +372,8 @@ FodyWeavers.xsd
 # End squad-kit block
 
 logs/
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example

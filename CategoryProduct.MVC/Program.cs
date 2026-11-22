@@ -18,7 +18,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.LogoutPath = "/Account/Logout";
         o.AccessDeniedPath = "/Account/AccessDenied";
         o.Cookie.HttpOnly = true;
-        o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        o.Cookie.SecurePolicy = builder.Configuration.GetValue("Cookie:SecurePolicy", CookieSecurePolicy.Always);
         o.Cookie.SameSite = SameSiteMode.Lax;
     });
 
@@ -36,16 +36,23 @@ builder.Services.AddHttpClient<CategoryProductApiClient>(c =>
 builder.Services.AddControllersWithViews(o => o.Filters.Add<ApiUnavailableFilter>());
 
 var app = builder.Build();
+var useHttpsRedirection = app.Configuration.GetValue("Hosting:UseHttpsRedirection", true);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    if (useHttpsRedirection)
+    {
+        app.UseHsts();
+    }
 }
 
-app.UseHttpsRedirection();
+if (useHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 app.UseSerilogRequestLogging();
 app.UseRouting();
 

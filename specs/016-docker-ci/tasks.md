@@ -15,16 +15,16 @@ description: "Task list for 016-docker-ci"
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Add `.env` (and `.env.*` except `.env.example`) ignore rules to `.gitignore`
-- [ ] T002 [P] Create root `.dockerignore` excluding `**/bin/`, `**/obj/`, `.git/`, `.vs/`, `.env`, `**/logs/`, `specs/`, `.specify/`, `.claude/`
-- [ ] T003 [P] Create `.env.example` with placeholder `SA_PASSWORD`, `JWT_KEY`, `API_HOST_PORT`, `MVC_HOST_PORT` and comments on complexity rules and forbidden characters
+- [X] T001 [P] Add `.env` (and `.env.*` except `.env.example`) ignore rules to `.gitignore`
+- [X] T002 [P] Create root `.dockerignore` excluding `**/bin/`, `**/obj/`, `.git/`, `.vs/`, `.env`, `**/logs/`, `specs/`, `.specify/`, `.claude/`
+- [X] T003 [P] Create `.env.example` with placeholder `SA_PASSWORD`, `JWT_KEY`, `API_HOST_PORT`, `MVC_HOST_PORT` and comments on complexity rules and forbidden characters
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Add `"Database": { "MigrateOnStartup": false }` to `CategoryProduct.API/appsettings.json` (FR-005, FR-006)
-- [ ] T005 [P] Create `CategoryProduct.API/Data/DatabaseMigrator.cs` with `MigrateIfEnabledAsync` (flag check, `IsRelational()` guard, 10 attempts x 3 s retry, logging) (FR-005)
+- [X] T004 Add `"Database": { "MigrateOnStartup": false }` to `CategoryProduct.API/appsettings.json` (FR-005, FR-006)
+- [X] T005 [P] Create `CategoryProduct.API/Data/DatabaseMigrator.cs` with `MigrateIfEnabledAsync` (flag check, `IsRelational()` guard, 10 attempts x 3 s retry, logging) (FR-005)
 
 **Checkpoint**: `dotnet build CategoryProduct.slnx` succeeds.
 
@@ -36,9 +36,9 @@ description: "Task list for 016-docker-ci"
 
 **Independent Test**: `dotnet test` passes with the new tests.
 
-- [ ] T006 [US2] Wire `await DatabaseMigrator.MigrateIfEnabledAsync(app.Services, app.Configuration, app.Logger)` in `CategoryProduct.API/Program.cs` after `app.MapHealthChecks(...)` and before `app.Run()`
-- [ ] T007 [P] [US2] Create `CategoryProduct.API.Tests/MigrationStartupTests.cs`: (a) helper called with flag true over an InMemory DbContext completes without exception and without touching a relational database; (b) a factory subclass of `ApiFactory` setting `Database:MigrateOnStartup=true` boots and `/health` returns 200; (c) default `ApiFactory` (flag unset) boots and `/health` returns 200
-- [ ] T008 [US2] Run `dotnet test CategoryProduct.slnx -c Release` and confirm all existing and new tests pass
+- [X] T006 [US2] Wire `await DatabaseMigrator.MigrateIfEnabledAsync(app.Services, app.Configuration, app.Logger)` in `CategoryProduct.API/Program.cs` after `app.MapHealthChecks(...)` and before `app.Run()`
+- [X] T007 [P] [US2] Create `CategoryProduct.API.Tests/MigrationStartupTests.cs`: (a) helper called with flag true over an InMemory DbContext completes without exception and without touching a relational database; (b) a factory subclass of `ApiFactory` setting `Database:MigrateOnStartup=true` boots and `/health` returns 200; (c) default `ApiFactory` (flag unset) boots and `/health` returns 200
+- [X] T008 [US2] Run `dotnet test CategoryProduct.slnx -c Release` and confirm all existing and new tests pass
 
 ---
 
@@ -46,10 +46,10 @@ description: "Task list for 016-docker-ci"
 
 **Goal**: No HTTPS redirect/HSTS and a working cookie over HTTP in the container, unchanged defaults locally.
 
-- [ ] T009 [P] [US3] Gate `app.UseHttpsRedirection()` with `Hosting:UseHttpsRedirection` (default true) in `CategoryProduct.API/Program.cs`
-- [ ] T010 [P] [US3] In `CategoryProduct.MVC/Program.cs` gate `UseHttpsRedirection()` and `UseHsts()` with `Hosting:UseHttpsRedirection` (default true) and read `Cookie:SecurePolicy` (default `Always`) for `o.Cookie.SecurePolicy`
-- [ ] T011 [P] [US3] Create `CategoryProduct.API/Dockerfile` (multi-stage sdk:10.0 to aspnet:10.0, repo-root context, `ASPNETCORE_HTTP_PORTS=8080`, `EXPOSE 8080`, `/app/logs` writable, `USER $APP_UID`)
-- [ ] T012 [P] [US3] Create `CategoryProduct.MVC/Dockerfile` (same pattern, MVC project only)
+- [X] T009 [P] [US3] Gate `app.UseHttpsRedirection()` with `Hosting:UseHttpsRedirection` (default true) in `CategoryProduct.API/Program.cs`
+- [X] T010 [P] [US3] In `CategoryProduct.MVC/Program.cs` gate `UseHttpsRedirection()` and `UseHsts()` with `Hosting:UseHttpsRedirection` (default true) and read `Cookie:SecurePolicy` (default `Always`) for `o.Cookie.SecurePolicy`
+- [X] T011 [P] [US3] Create `CategoryProduct.API/Dockerfile` (multi-stage sdk:10.0 to aspnet:10.0, repo-root context, `ASPNETCORE_HTTP_PORTS=8080`, `EXPOSE 8080`, `/app/logs` writable, `USER $APP_UID`)
+- [X] T012 [P] [US3] Create `CategoryProduct.MVC/Dockerfile` (same pattern, MVC project only)
 
 ---
 
@@ -57,23 +57,23 @@ description: "Task list for 016-docker-ci"
 
 **Goal**: `docker compose up --build` yields a working stack.
 
-- [ ] T013 [US1] Create `docker-compose.yml` with `sql` (healthcheck, `sqldata` volume), `api` (depends on `sql` healthy; env per contract), `mvc` (`Api__BaseUrl=http://api:8080/`; depends on `api` started), using `${VAR:?}` for required secrets (FR-003, FR-004, FR-007, FR-008, FR-009)
-- [ ] T014 [US1] Review compose + Dockerfiles against `contracts/environment-and-compose.md` (service names, ports, env keys, no secrets baked in); record in the PR that Docker was not run locally
+- [X] T013 [US1] Create `docker-compose.yml` with `sql` (healthcheck, `sqldata` volume), `api` (depends on `sql` healthy; env per contract), `mvc` (`Api__BaseUrl=http://api:8080/`; depends on `api` started), using `${VAR:?}` for required secrets (FR-003, FR-004, FR-007, FR-008, FR-009)
+- [X] T014 [US1] Review compose + Dockerfiles against `contracts/environment-and-compose.md` (service names, ports, env keys, no secrets baked in); record in the PR that Docker was not run locally
 
 ---
 
 ## Phase 6: User Story 4 - Continuous integration (Priority: P2)
 
-- [ ] T015 [US4] Create `.github/workflows/ci.yml`: triggers `push` and `pull_request`; job `build-test` (checkout, `actions/setup-dotnet` `10.0.x`, restore, build Release `--no-restore`, test Release `--no-build`); job `docker-build` (checkout, `docker build -f CategoryProduct.API/Dockerfile .`, same for MVC, no push) (FR-010)
-- [ ] T016 [US4] Validate YAML syntax of `ci.yml` and `docker-compose.yml` with a parser (Docker/gh unavailable)
+- [X] T015 [US4] Create `.github/workflows/ci.yml`: triggers `push` and `pull_request`; job `build-test` (checkout, `actions/setup-dotnet` `10.0.x`, restore, build Release `--no-restore`, test Release `--no-build`); job `docker-build` (checkout, `docker build -f CategoryProduct.API/Dockerfile .`, same for MVC, no push) (FR-010)
+- [X] T016 [US4] Validate YAML syntax of `ci.yml` and `docker-compose.yml` with a parser (Docker/gh unavailable)
 
 ---
 
 ## Phase 7: Polish
 
-- [ ] T017 [P] Search tracked files for real secrets (JWT key, passwords); confirm only placeholders exist and `git check-ignore .env` reports ignored (FR-012)
-- [ ] T018 [P] Confirm `launchSettings.json`, user-secrets flow, and existing tests are unchanged in behavior (FR-013, SC-005)
-- [ ] T019 Walk through `quickstart.md` by review; tick `checklists/requirements.md`
+- [X] T017 [P] Search tracked files for real secrets (JWT key, passwords); confirm only placeholders exist and `git check-ignore .env` reports ignored (FR-012)
+- [X] T018 [P] Confirm `launchSettings.json`, user-secrets flow, and existing tests are unchanged in behavior (FR-013, SC-005)
+- [X] T019 Walk through `quickstart.md` by review; tick `checklists/requirements.md`
 
 ---
 

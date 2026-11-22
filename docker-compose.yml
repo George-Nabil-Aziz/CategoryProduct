@@ -1,0 +1,46 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:?Set SA_PASSWORD in .env}
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: CategoryProduct.API/Dockerfile
+    depends_on:
+      sql:
+        condition: service_healthy
+    environment:
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
+      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=CategoryProductDB;User Id=sa;Password=${SA_PASSWORD:?Set SA_PASSWORD in .env};TrustServerCertificate=True;"
+      Database__MigrateOnStartup: "true"
+      Hosting__UseHttpsRedirection: "false"
+    ports:
+      - "${API_HOST_PORT:-5028}:8080"
+
+  mvc:
+    build:
+      context: .
+      dockerfile: CategoryProduct.MVC/Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      Api__BaseUrl: "http://api:8080/"
+      Hosting__UseHttpsRedirection: "false"
+      Cookie__SecurePolicy: "SameAsRequest"
+    ports:
+      - "${MVC_HOST_PORT:-5256}:8080"
+
+volumes:
+  sqldata:
