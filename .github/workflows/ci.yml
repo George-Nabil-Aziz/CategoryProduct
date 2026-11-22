@@ -55,3 +55,64 @@ jobs:
       - run: dotnet test CategoryProduct.API.SqlServerTests -c Release
         env:
           SQLSERVER_TEST_CONNECTION: Server=localhost,1433;User Id=sa;Password=${{ env.SQLSERVER_CI_SA_PASSWORD }};TrustServerCertificate=True;
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create throwaway .env (random, CI-only, never committed)
+        run: |
+          SA_PASSWORD="Ci-$(openssl rand -hex 12)-Aa1"
+          JWT_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$SA_PASSWORD"
+          echo "::add-mask::$JWT_KEY"
+          {
+            echo "SA_PASSWORD=$SA_PASSWORD"
+            echo "JWT_KEY=$JWT_KEY"
+            echo "API_HOST_PORT=5028"
+            echo "MVC_HOST_PORT=5256"
+            echo "LOW_STOCK_THRESHOLD=5"
+          } > .env
+
+      - name: Start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for API /health
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o health.json -w '%{http_code}' --max-time 5 http://localhost:5028/health || true)
+            if [ "$code" = "200" ]; then
+              cat health.json; echo
+              grep -q '"status":"Healthy"' health.json
+              grep -q '"name":"database"' health.json
+              exit 0
+            fi
+            echo "attempt $i: /health returned '$code'"; sleep 5
+          done
+          echo "API did not become healthy in time"; exit 1
+
+      - name: Wait for MVC home page
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o home.html -w '%{http_code}' --max-time 10 http://localhost:5256/ || true)
+            if [ "$code" = "200" ]; then
+              grep -q 'CategoryProduct.MVC' home.html
+              echo "MVC home OK"; exit 0
+            fi
+            echo "attempt $i: / returned '$code'"; sleep 5
+          done
+          echo "MVC did not serve the home page in time"; exit 1
+
+      - name: Show compose state and logs on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail=200
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans
+          rm -f .env health.json home.html

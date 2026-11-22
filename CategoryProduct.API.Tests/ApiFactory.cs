@@ -32,6 +32,7 @@ namespace CategoryProduct.API.Tests
         }
 
         protected virtual int LoginPermitLimit => 1000;
+        protected virtual int RefreshPermitLimit => 1000;
         protected virtual int LogoutPermitLimit => 1000;
         protected virtual int LowStockThreshold => 5;
         protected virtual int RefreshReuseGraceSeconds => 0;
@@ -47,7 +48,7 @@ namespace CategoryProduct.API.Tests
             builder.UseSetting("Inventory:LowStockThreshold", LowStockThreshold.ToString());
             builder.UseSetting("RateLimiting:LoginPermitLimit", LoginPermitLimit.ToString());
             builder.UseSetting("RateLimiting:RegisterPermitLimit", "1000");
-            builder.UseSetting("RateLimiting:RefreshPermitLimit", "1000");
+            builder.UseSetting("RateLimiting:RefreshPermitLimit", RefreshPermitLimit.ToString());
             builder.UseSetting("RateLimiting:LogoutPermitLimit", LogoutPermitLimit.ToString());
 
             builder.ConfigureServices(services =>

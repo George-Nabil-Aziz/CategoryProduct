@@ -161,7 +161,7 @@ No new entities. Touched: `RefreshToken` (read only: `RevokedAtUtc`, `ReplacedBy
 ## Known Gaps
 
 - **Not runnable locally**: this machine has no Docker and no SQL Server, so `CategoryProduct.API.SqlServerTests` cannot be executed here. **Verified on CI**: the first GitHub Actions run for commit `d1d6ce2` passed all three jobs (`build-test`, `docker-build`, `sqlserver-tests`) on 2026-11-22, with no tuning needed. Parallel-race tests depend on real timing; if one becomes intermittent on CI, investigate before retrying.
-- The MVC Data Protection change has no automated test (MVC has no test project) and was not run in Docker; verify with the quickstart on a Docker host.
+- The MVC Data Protection change has no automated test and was not run in Docker (`021-test-coverage` adds an MVC test project, but it does not cover key persistence; `compose-smoke` only checks start-up); verify with the quickstart on a Docker host.
 - Data Protection keys are stored unencrypted on the volume.
 - Out of scope, still open: migration `SeedTestUserForAuth` seeds a user with a known password into every database (and `AddUserRole` makes it Admin); no browser verification of MVC pages (017, 018, 019) or of `TokenRefreshHandler` after a lost race.
 - The grace window does not hand the losing client the winner's new token; the client must obtain it from its own state or sign in again.

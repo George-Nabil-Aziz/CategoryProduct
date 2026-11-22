@@ -5,10 +5,13 @@ namespace CategoryProduct.API.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RefreshTokenCleanupWorker> _logger;
+        private readonly TimeProvider _time;
 
         public RefreshTokenCleanupWorker(
-            IServiceScopeFactory scopeFactory, IConfiguration configuration, ILogger<RefreshTokenCleanupWorker> logger)
+            IServiceScopeFactory scopeFactory, IConfiguration configuration, ILogger<RefreshTokenCleanupWorker> logger,
+            TimeProvider? timeProvider = null)
         {
+            _time = timeProvider ?? TimeProvider.System;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
             _logger = logger;
@@ -18,7 +21,7 @@ namespace CategoryProduct.API.Services
         {
             var minutes = _configuration.GetValue("RefreshTokenCleanup:IntervalMinutes", 60);
             if (minutes <= 0) minutes = 60;
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(minutes));
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(minutes), _time);
             try
             {
                 while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -27,7 +30,7 @@ namespace CategoryProduct.API.Services
                     {
                         using var scope = _scopeFactory.CreateScope();
                         var service = scope.ServiceProvider.GetRequiredService<RefreshTokenCleanupService>();
-                        var count = await service.PurgeAsync(DateTime.UtcNow, stoppingToken);
+                        var count = await service.PurgeAsync(_time.GetUtcNow().UtcDateTime, stoppingToken);
                         _logger.LogInformation("Purged {Count} old refresh tokens", count);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

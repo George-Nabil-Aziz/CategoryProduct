@@ -140,11 +140,11 @@ No persisted entities are added or changed. See `data-model.md` for configuratio
 
 ## Known Gaps
 
-- **Docker and `gh` are not installed on the authoring machine**: the Dockerfiles, `docker-compose.yml`, `.dockerignore`, and the GitHub Actions workflow were NOT built, run, or executed locally. They can only be validated by careful review and by the first real run (`docker compose up --build` on a Docker host; the workflow on GitHub). Treat them as unverified until then.
+- COVERED by `021-test-coverage` for the compose run (CI job `compose-smoke`, pending the first CI run). Original gap: **Docker and `gh` are not installed on the authoring machine**: the Dockerfiles, `docker-compose.yml`, `.dockerignore`, and the GitHub Actions workflow were NOT built, run, or executed locally. They can only be validated by careful review and by the first real run (`docker compose up --build` on a Docker host; the workflow on GitHub). Treat them as unverified until then.
 - The only locally verifiable parts are the C# changes (`dotnet build`, `dotnet test`) and YAML/JSON syntax.
 - No YAML parser was available locally (no Python, no installed node YAML module); `docker-compose.yml` and `ci.yml` were validated by manual review only.
 - The constitution's Technology Stack section says MVC has its own EF Core + SQL Server data access, but `CategoryProduct.MVC.csproj` references only Serilog and MVC calls the API over HTTP; compose therefore gives MVC no database connection. The constitution text is outdated; amending it is out of scope.
-- The `api` and `mvc` containers have no healthcheck (see Assumptions).
+- The `api` and `mvc` containers have no healthcheck (see Assumptions). (`021-test-coverage` adds `compose-smoke`, which polls health and the MVC home page from outside; the gap itself stays.)
 - CLOSED by `020-hardening-followups` US4 (optional `DataProtection:KeysPath` plus `mvckeys` volume; NOT verified on Docker). The new `sqlserver-tests` CI job from 020 is also unverified until its first run. Original gap: the MVC container does not persist ASP.NET Core Data Protection keys, so auth cookies become
   invalid when the `mvc` container is recreated (users sign in again). Found in Review.
 - Migration `SeedTestUserForAuth` seeds its test user into the compose database too; change or

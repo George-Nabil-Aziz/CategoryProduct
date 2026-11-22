@@ -151,10 +151,11 @@ in); as admin open Users and change a role (see Known Gaps: not exercised in a b
 
 ## Known Gaps
 
-- The MVC Register and Users pages have no automated tests and were not run in a browser when this
-  spec was written.
+- COVERED by `021-test-coverage` (pending the first CI run). Original gap: the MVC Register and Users pages have no automated tests and were not run in a browser when this
+  spec was written. (Server-rendered behavior is now covered by `AccountTests` and `UsersTests`; a real browser is still not used.)
 - No migration was added by this commit: the unique index on `UserName` already exists
   (`IX_Users_UserName`, migration `20260820083821_UpdateUsersTableForAuth`).
 - No account deletion, password change/reset, or email verification.
 - `PUT api/users/{id}/role` and `GET api/users` return `401`/`403` through framework defaults;
-  only `403` for non-admin is covered by a test.
+  only `403` for non-admin is covered by a test. COVERED by `021-test-coverage` (pending the first CI run). Original gap: `GET api/users` without a token returning `401` (`RefreshEdgeCaseTests`).
+- New Known Gap found by `021-test-coverage`: the MVC `UsersController` does not handle an API `401` (no session-expired redirect to login); see the 021 Known Gaps.

@@ -176,4 +176,4 @@ An Admin opens "Inventory" from the navigation bar and sees every product with i
 - CLOSED by `020-hardening-followups` US3 (now `409`). Original gap: the 017 image endpoints (`POST`/`DELETE api/product/{id}/image`) also update `Product` but do not
   catch `DbUpdateConcurrencyException`; if a stock change commits between their read and save they
   return `500` instead of `409` (rare; found in Review).
-- The MVC Inventory pages were not run in a browser.
+- COVERED by `021-test-coverage` (pending the first CI run). Original gap: the MVC Inventory pages were not run in a browser. Server-side behavior is now covered by `InventoryTests`; the browser check stays open.

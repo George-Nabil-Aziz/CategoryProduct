@@ -165,10 +165,10 @@ Known Gaps: not run).
 
 ## Known Gaps
 
-- MVC `TokenRefreshHandler`, `AuthSessionService` and logout have no automated tests and were not
-  run in a browser when this spec was written.
-- Expired-token and deleted-user refresh paths, `429` on refresh, and the reuse-after-logout case
-  have no dedicated tests. (The reuse-after-logout case and `429` on logout are now covered by
+- COVERED by `021-test-coverage` (pending the first CI run). Original gap: MVC `TokenRefreshHandler`, `AuthSessionService` and logout have no automated tests and were not
+  run in a browser when this spec was written. (Now covered by the MVC test project; no real browser.)
+- COVERED by `021-test-coverage` (pending the first CI run). Original gap: expired-token and deleted-user refresh paths and `429` on refresh have no dedicated tests (`RefreshEdgeCaseTests`). The reuse-after-logout case
+  has no dedicated test. (The reuse-after-logout case and `429` on logout are now covered by
   `015-auth-hardening` tests.)
 - Reuse detection is per user (all active tokens), not per token chain; a user logged in on several
   devices loses all sessions when any revoked token is replayed. (Closed by `015-auth-hardening`:
@@ -180,4 +180,4 @@ Known Gaps: not run).
 - The logout endpoint is unauthenticated and not rate limited. (Rate limit closed by `015-auth-hardening`;
   it stays unauthenticated.)
 - Missing `refreshToken` in the request body is not specifically handled in code (the value is
-  coalesced to an empty string before hashing); the resulting HTTP status was not verified.
+  coalesced to an empty string before hashing); the resulting HTTP status was not verified. COVERED by `021-test-coverage` (pending the first CI run). Original gap: an empty JSON body (`{}`) returns `400 Bad Request` (`Refresh_EmptyJsonBody_ReturnsBadRequest`).
